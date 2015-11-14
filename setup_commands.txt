@@ -1,0 +1,10 @@
+source /opt/ros/indigo/setup.bash
+
+export ROS_MASTER_URI=http://192.168.1.101:11311      # =comment so this is unset for simulation
+export ROS_MASTER_URI=http://localhost:11311           # Set to local host for simulation
+export ROS_MASTER_URI=http://192.168.1.101:11311       # Set for real robot
+
+export TURTLEBOT_STAGE_WORLD_FILE=~/Downloads/stagemaps/simple_map.world
+export TURTLEBOT_STAGE_MAP_FILE=~/Downloads/stagemaps/simple_map.yaml
+
+
