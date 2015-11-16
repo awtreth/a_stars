@@ -156,9 +156,10 @@ def run():
     #rospy.init_node('lab3')
     mapSub = rospy.Subscriber("/map", OccupancyGrid, mapCallBack)
     globCostSub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, globCostCallBack)
-    locCostSub = rospy.Subscriber("/move_base/local_costmap/costmap", OccupancyGrid, locCostCallBack)
+    #locCostSub = rospy.Subscriber("/move_base/local_costmap/costmap", OccupancyGrid, locCostCallBack) # Do not need yet
     globPlanSub = rospy.Subscriber("/move_base/DWAPlannerROS/global_plan", Path, globPlanCallBack)
-    locPlanSub = rospy.Subscriber("/move_base/DWAPlannerROS/local_plan", Path, locPlanCallBack)
+    #locPlanSub = rospy.Subscriber("/move_base/DWAPlannerROS/local_plan", Path, locPlanCallBack)# Do not need yet
+    markerSub = rospy.Subscriber('/move_base_simple/goal/astar', PoseStamped, readGoal)
 
     gridPub = rospy.Publisher("/grid_check", GridCells, queue_size=1)
     sleeper = rospy.Duration(1)
