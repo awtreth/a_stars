@@ -133,12 +133,11 @@ def readGoal(msg):
 def readOdom(odom):
 	global startPoint
 	startPoint = Point(odom.pose.pose.position.x, odom.pose.pose.position.y)
-<<<<<<< HEAD
+
 	#print startPoint.x
 	#print startPoint.y
-=======
-	print startPoint.x
-	print startPoint.y
+
+	
 	
 #def pathServClient(self, #start, #goal):
 	#all our path stuff
@@ -152,7 +151,7 @@ def readOdom(odom):
 #		self.fail("No path found: %s"%e)
 
 #	rospy.spin()
->>>>>>> bac456c0ddde1a3632a870f4e6c3a4b4636a2c1b
+
 
 def run():
 	global goalPoint
