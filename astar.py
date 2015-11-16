@@ -86,6 +86,70 @@ class Node(object):
 	def cost():
 		return self.g_n + self.h_n
 		
+# reads in map data
+def mapCallBack(data):
+    global mapData, grid
+    global width
+    global height
+    global mapgrid
+    mapgrid = data
+    mapData = data.data
+    width = data.info.width
+    height = data.info.height
+    #print data.info # used for debugging
+    #publishCells(mapgrid.data) # used for debugging
+
+def globCostCallBack(data):
+    global mapData, globCostMap
+    global width
+    global height
+    global mapgrid
+    globMapGrid = data
+
+def locCostCallBack(data):
+    global mapData, locCostMap
+    global width
+    global height
+    global mapgrid
+    locMapGrid = data
+
+def publishGlobCostCells(globCostMap)
+    pass
+
+def publishLocCostCells(locCostMap)
+    pass
+
+def globPlanCallBack(data):
+	sequence = data.poses.seq	#sequence ID: consecutively increasing
+	data.poses.frame_id		#0: no frame, 1: global frame
+	pass
+
+def locPlanCallBack(data):
+	sequence = data.poses.seq	#sequence ID: consecutively increasing
+	ID = data.poses.frame_id		#0: no frame, 1: global frame
+	pass
+
+def publishCells(grid):
+    global pub
+    print "publishing"
+    k=0
+    cells = GridCells()
+    cells.header.frame_id = 'map'
+    cells.cell_width = 0.3 # edit for grid size .3 for simple map
+    cells.cell_height = 0.3 # edit for grid size
+
+    for i in range(1,height): #height should be set to height of grid
+        k=k+1
+        for j in range(1,width): #height should be set to height of grid
+            k=k+1
+            #print k # used for debugging
+            if (grid[k] == 100):
+                point=Point()
+                point.x=j*.3 # edit for grid size
+                point.y=i*.3 # edit for grid size
+                point.z=0
+                cells.cells.append(point)
+		
 		
 def run():
     global pub
