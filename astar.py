@@ -133,8 +133,8 @@ def readGoal(msg):
 def readOdom(odom):
 	global startPoint
 	startPoint = Point(odom.pose.pose.position.x, odom.pose.pose.position.y)
-	print startPoint.x
-	print startPoint.y
+	#print startPoint.x
+	#print startPoint.y
 
 def run():
 	global goalPoint
