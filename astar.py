@@ -35,32 +35,21 @@ class NavMap(object):
 	
 	def __init__(self, ocmap, goalPoint): #ocmap = OccupancyGrid global_cost_map
 		
-		
 		self.width = ocmap.info.width #just to make it easier to see
 		self.height = ocmap.info.height
 
-
 		#where we store the state of the cells
-		self.table = [[free]*self.width]*self.height #At first we fill it all with free
-		
+		self.table = [free]*len(ocmap.data)
 		self.goalPoint = goalPoint
-		
-		for row in range(self.height):
-			for col in range(self.width):
-				#print row*self.width+col
-				if(ocmap.data[row*self.width+col] > 90): #ocmap.data[] is a simple array
-					#print self.table[row][col]
-					self.table[row][col] = blocked
-					#print ocmap.data[row*self.width+col]
-				else:
-					self.table[row][col] = free
-				# else it keeps with free
-		
+
+		for i in range(len(table)):
+			if(ocmap.data[i]>90):
+				self.table[i] = blocked
 
 	#return the expanded nodes from the node parent
-	def expand(parent): #parent is a node
+	def expand(self, parent): #parent is a node
 		#TODO: we can check if parent is in frontier (we can throw an exception)
-		table[parent.pos.y][parent.pos.x] = explored
+		self.set(parent.pos.x, parent.pos.y, explored)
 		
 		children = [] #return list
 		for i in range(-1,1):
@@ -74,10 +63,9 @@ class NavMap(object):
 				if(not self.inBounds(pos)):
 					continue
 				else:
-					if(abs(i)==abs(j) or table[pos.y][pos.x] != free):
+					if(abs(i)==abs(j) or self.get(pos.x, pos.y) != free):
 						continue
-				
-				table[pos.y][pos.x] = frontier
+				self.set(pos.x, pos.y, frontier)
 				pointDiff = self.goalPoint.minus(parent.pos)
 				h_n = abs(pointDiff.x) + abs(pointDiff.y) #h_n = abs(dx) + abs(dy) #for 90 degree turn
 				
@@ -85,6 +73,18 @@ class NavMap(object):
 
 		return children
 	
+	
+	def get(self, x, y):
+		if(self.inBounds(Point(x,y)) ):
+			return self.table[y*self.width+x]
+		else:
+			return 0 #TODO: throw Exception
+			
+	def set(self, x, y, value):
+		if(self.inBounds(Point(x,y)) ):
+			self.table[y*self.width+x] = value
+		else:
+			return 0 #TODO: throw Exception
 	
 	def inBounds(self,point):
 		if(point.x > 0 and point.x < self.width and point.y > 0 and point.y < self.height):
@@ -133,8 +133,8 @@ def readGoal(msg):
 def readOdom(odom):
 	global startPoint
 	startPoint = Point(odom.pose.pose.position.x, odom.pose.pose.position.y)
-	print startPoint.x
-	print startPoint.y
+	#print startPoint.x
+	#print startPoint.y
 
 def run():
 	global goalPoint
@@ -171,11 +171,11 @@ def run():
 			
 			map = NavMap(globMapGrid, goalPoint)
 			print "map created"
-			print startPoint
-			origin = Node(startPoint)
-			print "origin created"
-			map.expand(origin)
-			print"expanded"
+			#print startPoint
+			#origin = Node(startPoint)
+			#print "origin created"
+			#map.expand(origin)
+			#print"expanded"
 			startPathPlanning = False
 			newGoal = False
     	
