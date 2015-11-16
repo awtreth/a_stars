@@ -2,7 +2,7 @@
 
 import rospy, math
 
-from nav_msgs.msg import OccupancyGrid, GridCells, Path
+from nav_msgs.msg import OccupancyGrid, GridCells, Path, Odometry
 from Queue import PriorityQueue
 from geometry_msgs.msg import PoseStamped
 #from enum import Enum
@@ -109,18 +109,28 @@ def globCostCallBack(data):
     
     globMapGrid = data
     startPathPlanning = True
+    
+    print "Got the map"
 
 def readGoal(msg):
 	global goalPoint
 	global newGoal
-	goalPoint = msg
+	goalPoint = Point(msg.pose.position.x, msg.pose.position.y)
 	newGoal = True
-		
+	
+	#print goalPoint.x
+	#print goalPoint.y	
+
+def readOdom(odom):
+	global startPoint
+	startPoint = Point(odom.pose.pose.position.x, odom.pose.pose.position.y)
+
 def run():
 	global goalPoint
 	global newGoal
 	global globalMapGrid
 	global startPathPlanning
+	global startPoint
 	
 	startPathPlanning = False
 	newGoal = False
@@ -131,6 +141,7 @@ def run():
 	globCostSub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, globCostCallBack)
 	globPlanPub = rospy.Publisher("/aStarPath", Path, queue_size=1)
 	markerSub = rospy.Subscriber('/aStarNavGoal', PoseStamped, readGoal)
+	odomSub = rospy.Subscriber('/odom', Odometry, readOdom)
 
 	frontierPub = rospy.Publisher("/grid_Frontier", GridCells, queue_size=1)
 	exploredPub = rospy.Publisher("/grid_explored", GridCells, queue_size=1)
@@ -139,25 +150,22 @@ def run():
 	sleeper = rospy.Duration(1)
 	rospy.sleep(sleeper)
     
-    
-    
-    
-    
     #initialize shit
     
 	while not rospy.is_shutdown():
-    	
-    	if startPathPlanning and newGoal:
-    	
-    		map = NavMap(globMapGrid, goalPoint)
-    		#priority_queue stuff
-    		
+		print "here"
+		if (startPathPlanning and newGoal):
+			map = NavMap(globMapGrid, goalPoint)
+			print goalPoint.x
+			print goalPoint.y
+			print newGoal
+			print startPathPlanning
+    		print "wtf"
+    		print "%f"%startPoint.x + " %f"%startPoint.y
     		startPathPlanning = False
     		newGoal = False
-    		
-    
-    
-    rospy.spin()
+    	
+	rospy.spin()
     
 if __name__ == '__main__':
 	try:
