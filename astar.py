@@ -23,35 +23,44 @@ class Point(object):
 	def plus(self, otherPoint):
 		return Point(otherPoint.x+self.x, otherPoint.y+self.y)
 		
+		
+		
+free = 0
+frontier = 1
+explored = 2
+blocked = 3
+
 #keep tracks of the state of each cell in the map
 class NavMap(object):
-	#possible cell states
-	class CellState (object):
-		free = 0
-		frontier = 1
-		explored = 2
-		blocked = 3
 	
-	def __init__(self, ocmapE, goalPoint): #ocmap = OccupancyGrid global_cost_map
+	def __init__(self, ocmap, goalPoint): #ocmap = OccupancyGrid global_cost_map
+		
 		
 		self.width = ocmap.info.width #just to make it easier to see
 		self.height = ocmap.info.height
-		
+
+
 		#where we store the state of the cells
-		self.table = [[CellState.free]*self.width][self.height] #At first we fill it all with CellState.free
+		self.table = [[free]*self.width]*self.height #At first we fill it all with free
 		
 		self.goalPoint = goalPoint
 		
 		for row in range(self.height):
 			for col in range(self.width):
+				#print row*self.width+col
 				if(ocmap.data[row*self.width+col] > 90): #ocmap.data[] is a simple array
-					self.map[row][col] = CellState.blocked
-				# else it keeps with CellState.free
-	
+					#print self.table[row][col]
+					self.table[row][col] = blocked
+					#print ocmap.data[row*self.width+col]
+				else:
+					self.table[row][col] = free
+				# else it keeps with free
+		
+
 	#return the expanded nodes from the node parent
 	def expand(parent): #parent is a node
 		#TODO: we can check if parent is in frontier (we can throw an exception)
-		table[parent.pos.y][parent.pos.x] = CellState.explored
+		table[parent.pos.y][parent.pos.x] = explored
 		
 		children = [] #return list
 		for i in range(-1,1):
@@ -65,10 +74,10 @@ class NavMap(object):
 				if(not self.inBounds(pos)):
 					continue
 				else:
-					if(abs(i)==abs(j) or table[pos.y][pos.x] != CellState.free):
+					if(abs(i)==abs(j) or table[pos.y][pos.x] != free):
 						continue
 				
-				table[pos.y][pos.x] = CellState.frontier
+				table[pos.y][pos.x] = frontier
 				pointDiff = self.goalPoint.minus(parent.pos)
 				h_n = abs(pointDiff.x) + abs(pointDiff.y) #h_n = abs(dx) + abs(dy) #for 90 degree turn
 				
@@ -104,13 +113,13 @@ class Node(object):
 		
 
 def globCostCallBack(data):
-    global globalMapGrid
-    global startPathPlanning
-    
-    globMapGrid = data
-    startPathPlanning = True
-    
-    print "Got the map"
+	global globMapGrid
+	global startPathPlanning
+	
+	globMapGrid = data
+	startPathPlanning = True
+
+	print "Got the map"
 
 def readGoal(msg):
 	global goalPoint
@@ -124,11 +133,13 @@ def readGoal(msg):
 def readOdom(odom):
 	global startPoint
 	startPoint = Point(odom.pose.pose.position.x, odom.pose.pose.position.y)
+	print startPoint.x
+	print startPoint.y
 
 def run():
 	global goalPoint
 	global newGoal
-	global globalMapGrid
+	global globMapGrid
 	global startPathPlanning
 	global startPoint
 	
@@ -153,17 +164,20 @@ def run():
     #initialize shit
     
 	while not rospy.is_shutdown():
-		print "here"
+		
 		if (startPathPlanning and newGoal):
+			
+			#print globMapGrid
+			
 			map = NavMap(globMapGrid, goalPoint)
-			print goalPoint.x
-			print goalPoint.y
-			print newGoal
-			print startPathPlanning
-    		print "wtf"
-    		print "%f"%startPoint.x + " %f"%startPoint.y
-    		startPathPlanning = False
-    		newGoal = False
+			print "map created"
+			print startPoint
+			origin = Node(startPoint)
+			print "origin created"
+			map.expand(origin)
+			print"expanded"
+			startPathPlanning = False
+			newGoal = False
     	
 	rospy.spin()
     
