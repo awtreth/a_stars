@@ -133,8 +133,26 @@ def readGoal(msg):
 def readOdom(odom):
 	global startPoint
 	startPoint = Point(odom.pose.pose.position.x, odom.pose.pose.position.y)
+<<<<<<< HEAD
 	#print startPoint.x
 	#print startPoint.y
+=======
+	print startPoint.x
+	print startPoint.y
+	
+#def pathServClient(self, #start, #goal):
+	#all our path stuff
+#	rospy.loginfo('waiting for service')
+#	rospy.wait_for_service('Path')
+#	try:
+#		path = rospy.ServiceProxy('Path', Path, True)#(name, service_class, persistent=True)
+		
+#		globPlanPub = rospy.Publisher("/aStarPath", Path, queue_size=1)
+#	except rospy.ServiceException as e:
+#		self.fail("No path found: %s"%e)
+
+#	rospy.spin()
+>>>>>>> bac456c0ddde1a3632a870f4e6c3a4b4636a2c1b
 
 def run():
 	global goalPoint
