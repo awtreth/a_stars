@@ -86,3 +86,36 @@ class Node(object):
 	def cost():
 		return self.g_n + self.h_n
 		
+		
+def run():
+    global pub
+    #rospy.init_node('lab3')
+    mapSub = rospy.Subscriber("/map", OccupancyGrid, mapCallBack)
+    globCostSub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, globCostCallBack)
+    locCostSub = rospy.Subscriber("/move_base/local_costmap/costmap", OccupancyGrid, locCostCallBack)
+    globPlanSub = rospy.Subscriber("/move_base/DWAPlannerROS/global_plan", Path, globPlanCallBack)
+    locPlanSub = rospy.Subscriber("/move_base/DWAPlannerROS/local_plan", Path, locPlanCallBack)
+
+    gridPub = rospy.Publisher("/grid_check", GridCells, queue_size=1)
+    sleeper = rospy.Duration(1)
+    rospy.sleep(sleeper)
+
+
+
+
+    #used to make checker board # used for debugging
+    checker=[1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
+1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
+1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
+1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
+1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
+1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
+1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
+1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
+1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
+1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0]
+
+    while (1 and not rospy.is_shutdown()):
+        publishCells(mapData) #publishing map data every 2 seconds
+        rospy.sleep(2)  
+        print("Complete")		
