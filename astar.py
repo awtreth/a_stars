@@ -154,33 +154,36 @@ def publishCells(grid):
 def run():
     global pub
     #rospy.init_node('lab3')
-    mapSub = rospy.Subscriber("/map", OccupancyGrid, mapCallBack)
+   #mapSub = rospy.Subscriber("/map", OccupancyGrid, mapCallBack)
     globCostSub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, globCostCallBack)
     #locCostSub = rospy.Subscriber("/move_base/local_costmap/costmap", OccupancyGrid, locCostCallBack) # Do not need yet
-    globPlanSub = rospy.Subscriber("/move_base/DWAPlannerROS/global_plan", Path, globPlanCallBack)
+    globPlanPub = rospy.Publisher("/aStarPath", Path, queue_size=1)
     #locPlanSub = rospy.Subscriber("/move_base/DWAPlannerROS/local_plan", Path, locPlanCallBack)# Do not need yet
-    markerSub = rospy.Subscriber('/move_base_simple/goal/astar', PoseStamped, readGoal)
+    markerSub = rospy.Subscriber('/aStarNavGoal', PoseStamped, readGoal)
 
-    gridPub = rospy.Publisher("/grid_check", GridCells, queue_size=1)
+    frontierPub = rospy.Publisher("/grid_Frontier", GridCells, queue_size=1)
+    exploredPub = rospy.Publisher("/grid_explored", GridCells, queue_size=1)
+    
+    
     sleeper = rospy.Duration(1)
     rospy.sleep(sleeper)
+    
+    #initialize shit
+    
+    # 
+    
+    
+    
+    rospy.spin()
+    
+if __name__ == '__main__':
+	try:
+		run()
+	except rospy.ROSInteruptException:
+		pass
 
 
 
 
-    #used to make checker board # used for debugging
-    checker=[1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
-1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
-1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
-1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
-1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
-1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
-1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
-1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
-1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,
-1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0]
 
-    while (1 and not rospy.is_shutdown()):
-        publishCells(mapData) #publishing map data every 2 seconds
-        rospy.sleep(2)  
-        print("Complete")		
+ 		
