@@ -229,7 +229,7 @@ def run():
 	
 	rospy.init_node('lab3')
 	
-	globCostSub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, globCostCallBack)
+	globCostSub = rospy.Subscriber("/map", OccupancyGrid, globCostCallBack)
 	globPlanPub = rospy.Publisher("/aStarPath", Path, queue_size=1)
 	markerSub = rospy.Subscriber('/aStarNavGoal', PoseStamped, readGoal)
 	startSub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, readStart)
