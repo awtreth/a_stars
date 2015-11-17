@@ -5,14 +5,28 @@ import rospy, math
 from nav_msgs.msg import OccupancyGrid, GridCells, Path, Odometry
 from Queue import PriorityQueue
 #import geometry_msgs
-from geometry_msgs.msg import PoseStamped, Point
+from geometry_msgs.msg import PoseStamped, Point , PoseWithCovarianceStamped
 #from enum import Enum
 
+#CONSTANTS
+#Map points states
+free = 0
+frontier = 1
+explored = 2
+blocked = 3
+#Orientation
+west = 0
+north = 1
+east = 2
+south = 3
+
+
 #Helper class
-class Point(object):
-	def __init__(self, x = 0, y = 0):
+class Point(object): #FIXME: actually, it is a Pose (point + orientation)
+	def __init__(self, x = 0, y = 0, orientation = 0):
 		self.x = x
 		self.y = y
+		self.dir = orientation
 
 	#distance
 	def dist(self, otherPoint):
@@ -28,10 +42,6 @@ class Point(object):
 		return self.x == otherPoint.x and self.y == otherPoint.y
 		
 		
-free = 0
-frontier = 1
-explored = 2
-blocked = 3
 
 #keep tracks of the state of each cell in the map
 class NavMap(object):
@@ -66,6 +76,13 @@ class NavMap(object):
 					#print "value = %d"%self.get(pos.x, pos.y)
 					if(abs(i)==abs(j) or self.get(pos.x, pos.y) is not free):
 						continue
+				
+				#0  -1 -> 0 (west)
+				#-1  0 -> 1 (north)
+				#0   1 -> 2 (east)
+				#1   0 -> 3 (south)
+				pos.dir = abs(2*i+j+1)
+				
 				self.set(pos.x, pos.y, frontier)
 				
 				pointDiff = self.goalPoint.minus(parent.pos)
@@ -124,7 +141,7 @@ class Node(object):
 			self.pos = pos
 			self.parent = parent
 			self.h_n = h_n
-			self.g_n = parent.g_n+1
+			self.g_n = parent.g_n + 1 + (self.pos.dir+parent.pos.dir)%2
 		else:
 			self.pos = pos
 			self.parent = 0 #check if it is right, because parent is of tyep Node
@@ -150,14 +167,22 @@ def readGoal(msg):
 	global newGoal
 	goalPoint = Point(msg.pose.position.x, msg.pose.position.y)
 	newGoal = True
+	print "got Goal"
+	
+def readStart(msg):
+	global startPoint
+	global newStart
+	startPoint = Point(msg.pose.pose.position.x, msg.pose.pose.position.y)
+	newStart = True
+	print "got start"
 	
 	#print goalPoint.x
 	#print goalPoint.y	
 
-def readOdom(odom):
-	global startPoint
-	startPoint = Point(odom.pose.pose.position.x, odom.pose.pose.position.y)
-	
+#~ def readOdom(odom):
+	#~ global startPoint
+	#~ startPoint = Point(odom.pose.pose.position.x, odom.pose.pose.position.y)
+	#~ 
 	#print startPoint.x
 	#print startPoint.y
 
@@ -170,9 +195,11 @@ def run():
 	global startPathPlanning
 	global startPoint
 	global resolution
+	global newStart
 	
 	startPathPlanning = False
 	newGoal = False
+	newStart = False
 	
 	
 	rospy.init_node('lab3')
@@ -180,7 +207,7 @@ def run():
 	globCostSub = rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, globCostCallBack)
 	globPlanPub = rospy.Publisher("/aStarPath", Path, queue_size=1)
 	markerSub = rospy.Subscriber('/aStarNavGoal', PoseStamped, readGoal)
-	odomSub = rospy.Subscriber('/odom', Odometry, readOdom)
+	startSub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, readStart)
 
 	frontierPub = rospy.Publisher("/grid_Frontier", GridCells, queue_size=1)
 	exploredPub = rospy.Publisher("/grid_Explored", GridCells, queue_size=1)
@@ -196,12 +223,12 @@ def run():
     
 	while not rospy.is_shutdown():
 		
-		if (startPathPlanning and newGoal):
+		if (startPathPlanning and newGoal and newStart):
 			startPoint = Point(round(startPoint.x/resolution), round(startPoint.y/resolution))
 			goalPoint = Point(round(goalPoint.x/resolution), round(goalPoint.y/resolution))
 			
-			startPoint.x = 100
-			startPoint.y = 80
+			#startPoint.x = 100
+			#startPoint.y = 80
 			
 			
 			mmap = NavMap(globMapGrid, goalPoint)
@@ -221,6 +248,9 @@ def run():
 				for node in children:
 					pq.put((node.cost(), node))
 				
+				if(pq.qsize() == 0):
+					print "didn't find a path"
+					break
 				currentNode = pq.get()[1]
 				
 			
@@ -255,6 +285,7 @@ def run():
 			
 			#startPathPlanning = False
 			newGoal = False
+			newStart = False
     	
 	rospy.spin()
     
