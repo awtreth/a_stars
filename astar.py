@@ -1,11 +1,11 @@
 #!usr/bin/env python
 
-import rospy, math
+import rospy, math, tf
 
 from nav_msgs.msg import OccupancyGrid, GridCells, Path, Odometry
 from Queue import PriorityQueue
 #import geometry_msgs
-from geometry_msgs.msg import PoseStamped, Point , PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped, Point , PoseWithCovarianceStamped, Pose, Quaternion
 #from enum import Enum
 
 #CONSTANTS
@@ -179,6 +179,21 @@ def readStart(msg):
 	#print goalPoint.x
 	#print goalPoint.y	
 
+def nodeToPose(node):
+	global resolution #this is not a good programming practice, but it works FIXME
+	
+	pose = PoseStamped()
+	pose.header.frame_id = "map"
+	point = Point()
+	point.x = node.pos.x*resolution
+	point.y = node.pos.y*resolution
+	point.z = 0
+	quatTuple = tf.transformations.quaternion_from_euler(0,0,node.pos.dir*math.pi/2);
+	pose.pose.orientation = Quaternion(quatTuple[0],quatTuple[1], quatTuple[2], quatTuple[3])
+	pose.pose.position = point
+	
+	return pose
+	
 def run():
 	global goalPoint
 	global newGoal
@@ -210,7 +225,7 @@ def run():
 	sleeper = rospy.Duration(1)
 	rospy.sleep(sleeper)
     
-   
+	
     
 	while not rospy.is_shutdown():
 		
@@ -244,26 +259,35 @@ def run():
 					break
 				currentNode = pq.get()[1]
 				
+			#currentNode == goal
 			
 			frontierPub.publish(mmap.getGridCell(frontier))
 			exploredPub.publish(mmap.getGridCell(explored))
 			freePub.publish(mmap.getGridCell(free))
 			blockedPub.publish(mmap.getGridCell(blocked))
 			
-			path = GridCells()
+			path = Path()
 			path.header.frame_id = "map"
-			path.cell_width = resolution
-			path.cell_height = resolution
+			path.poses.append(nodeToPose(currentNode))
 			
 			while currentNode.parent is not 0 and not rospy.is_shutdown():
-				point = Point()
-				point.x = currentNode.pos.x*resolution
-				point.y = currentNode.pos.y*resolution
-				point.z = 0
-				path.cells.append(point)
+				if(currentNode.pos.dir is not currentNode.parent.pos.dir):
+					point = Point(currentNode.parent.pos.x, currentNode.parent.pos.y, currentNode.pos.dir)
+					newnode = Node(point)
+					path.poses.append(nodeToPose(newnode))
+				
 				currentNode = currentNode.parent
 			
-			pathPub.publish(path)
+			wayPoints = GridCells()
+			wayPoints.header.frame_id = "map"
+			wayPoints.cell_width = resolution
+			wayPoints.cell_height = resolution
+			
+			for pose in path.poses :
+				wayPoints.cells.append(pose.pose.position)
+			
+			pathPub.publish(wayPoints)
+			globPlanPub.publish(path)
 			#~ print"expanded"
 			#~ 
 			#~ print "%d"%origin.pos.x + " %d"%origin.pos.y
@@ -281,10 +305,10 @@ def run():
 	rospy.spin()
     
 if __name__ == '__main__':
-	try:
-		run()
-	except rospy.ROSInteruptException:
-		pass
+	#try:
+	run()
+	#except rospy.ROSInteruptException:
+		#pass
 
 
 
