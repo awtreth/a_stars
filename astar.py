@@ -4,12 +4,13 @@ import rospy, math
 
 from nav_msgs.msg import OccupancyGrid, GridCells, Path, Odometry
 from Queue import PriorityQueue
-from geometry_msgs.msg import PoseStamped
+#import geometry_msgs
+from geometry_msgs.msg import PoseStamped, Point
 #from enum import Enum
 
 #Helper class
 class Point(object):
-	def __init__(self, x, y):
+	def __init__(self, x = 0, y = 0):
 		self.x = x
 		self.y = y
 
@@ -22,7 +23,9 @@ class Point(object):
 	#this + other
 	def plus(self, otherPoint):
 		return Point(otherPoint.x+self.x, otherPoint.y+self.y)
-		
+	
+	def equals(self, otherPoint):
+		return self.x == otherPoint.x and self.y == otherPoint.y
 		
 		
 free = 0
@@ -34,51 +37,39 @@ blocked = 3
 class NavMap(object):
 	
 	def __init__(self, ocmap, goalPoint): #ocmap = OccupancyGrid global_cost_map
-		
-		
+		self.resolution = ocmap.info.resolution
 		self.width = ocmap.info.width #just to make it easier to see
 		self.height = ocmap.info.height
-
-
-		#where we store the state of the cells
-		self.table = [[free]*self.width]*self.height #At first we fill it all with free
 		
+		#where we store the state of the cells
+		self.table = [free]*len(ocmap.data)
 		self.goalPoint = goalPoint
 		
-		for row in range(self.height):
-			for col in range(self.width):
-				#print row*self.width+col
-				if(ocmap.data[row*self.width+col] > 90): #ocmap.data[] is a simple array
-					#print self.table[row][col]
-					self.table[row][col] = blocked
-					#print ocmap.data[row*self.width+col]
-				else:
-					self.table[row][col] = free
-				# else it keeps with free
-		
+		for i in range(len(self.table)):
+			if(ocmap.data[i]>90):
+				self.table[i] = blocked
 
 	#return the expanded nodes from the node parent
-	def expand(parent): #parent is a node
+	def expand(self, parent): #parent is a node
 		#TODO: we can check if parent is in frontier (we can throw an exception)
-		table[parent.pos.y][parent.pos.x] = explored
-		
+		self.set(parent.pos.x, parent.pos.y, explored)
 		children = [] #return list
-		for i in range(-1,1):
-			for j in range(-1,1):
+		for i in range(-1,2):
+			for j in range(-1,2):
 				#with abs(i)==abs(j) we just consider turns of 90 degreees
 				#try i == j == 0 to include diagonals
-				
-				pos = parent.plus(Point(i,j)) #we can have problems with the definition of (i,j) (row,col) and (x,y) FIXME
-				
+				pos = parent.pos.plus(Point(i,j)) #we can have problems with the definition of (i,j) (row,col) and (x,y) FIXME
 				#FIXME: not good code
 				if(not self.inBounds(pos)):
 					continue
 				else:
-					if(abs(i)==abs(j) or table[pos.y][pos.x] != free):
+					#print "value = %d"%self.get(pos.x, pos.y)
+					if(abs(i)==abs(j) or self.get(pos.x, pos.y) is not free):
 						continue
+				self.set(pos.x, pos.y, frontier)
 				
-				table[pos.y][pos.x] = frontier
 				pointDiff = self.goalPoint.minus(parent.pos)
+				
 				h_n = abs(pointDiff.x) + abs(pointDiff.y) #h_n = abs(dx) + abs(dy) #for 90 degree turn
 				
 				children.append(Node(pos, parent, h_n))
@@ -86,37 +77,70 @@ class NavMap(object):
 		return children
 	
 	
+	def get(self, x, y):
+		if(self.inBounds(Point(x,y)) ):
+			return self.table[int(y*self.width+x)]
+		else:
+			return 0 #TODO: throw Exception
+			
+	def set(self, x, y, value):
+		if(self.inBounds(Point(x,y)) ):
+			self.table[int(y*self.width+x)] = value
+		else:
+			return 0 #TODO: throw Exception
+	
 	def inBounds(self,point):
 		if(point.x > 0 and point.x < self.width and point.y > 0 and point.y < self.height):
 			return True
 		else:
 			return False
+			
+	def getGridCell(self, value):
+		grid = GridCells()
+		grid.header.frame_id = "map"
+		grid.cell_width = self.resolution
+		grid.cell_height = self.resolution
+		#grid.cells = []
+		
+		for y in range(self.height):
+			for x in range(self.width):
+				if(self.get(x,y) == value):
+					point = Point()
+					point.x = x*self.resolution
+					point.y = y*self.resolution
+					point.z = 0
+					grid.cells.append(point)
+		
+		
+		return grid
+		
 	
 	
 class Node(object):
 	
 	
-	def __init__(self, pos):
-		self.pos = pos
-		self.parent = 0 #check if it is right, because parent is of tyep Node
-		self.h_n = 0
-		self.g_n = 0
-	
-	def __init__(self, pos, parent, h_n):
-		self.pos = pos
-		self.parent = parent
-		self.h_n = h_n
-		self.g_n = parent.g_n+1
+	def __init__(self, pos, parent = 0 , h_n = 0):
+		if(parent):
+			self.pos = pos
+			self.parent = parent
+			self.h_n = h_n
+			self.g_n = parent.g_n+1
+		else:
+			self.pos = pos
+			self.parent = 0 #check if it is right, because parent is of tyep Node
+			self.h_n = 0
+			self.g_n = 0
 
-	def cost():
+	def cost(self):
 		return self.g_n + self.h_n
 		
 
 def globCostCallBack(data):
 	global globMapGrid
 	global startPathPlanning
-	
+	global resolution
 	globMapGrid = data
+	resolution = globMapGrid.info.resolution
 	startPathPlanning = True
 
 	print "Got the map"
@@ -133,11 +157,6 @@ def readGoal(msg):
 def readOdom(odom):
 	global startPoint
 	startPoint = Point(odom.pose.pose.position.x, odom.pose.pose.position.y)
-
-	#print startPoint.x
-	#print startPoint.y
-
-	
 	
 #def pathServClient(self, #start, #goal):
 	#all our path stuff
@@ -159,6 +178,7 @@ def run():
 	global globMapGrid
 	global startPathPlanning
 	global startPoint
+	global resolution
 	
 	startPathPlanning = False
 	newGoal = False
@@ -172,28 +192,77 @@ def run():
 	odomSub = rospy.Subscriber('/odom', Odometry, readOdom)
 
 	frontierPub = rospy.Publisher("/grid_Frontier", GridCells, queue_size=1)
-	exploredPub = rospy.Publisher("/grid_explored", GridCells, queue_size=1)
+	exploredPub = rospy.Publisher("/grid_Explored", GridCells, queue_size=1)
+	freePub = rospy.Publisher("/grid_Free", GridCells, queue_size=1)
+	blockedPub = rospy.Publisher("/grid_Blocked", GridCells, queue_size=1)
+	pathPub = rospy.Publisher("/grid_path", GridCells, queue_size=1)
     
     
 	sleeper = rospy.Duration(1)
 	rospy.sleep(sleeper)
     
-    #initialize shit
+   
     
 	while not rospy.is_shutdown():
 		
 		if (startPathPlanning and newGoal):
+			startPoint = Point(round(startPoint.x/resolution), round(startPoint.y/resolution))
+			goalPoint = Point(round(goalPoint.x/resolution), round(goalPoint.y/resolution))
 			
-			#print globMapGrid
+			startPoint.x = 100
+			startPoint.y = 80
 			
-			map = NavMap(globMapGrid, goalPoint)
+			
+			mmap = NavMap(globMapGrid, goalPoint)
 			print "map created"
-			print startPoint
+			
+
+			#~ print startPoint.x
+			#~ print startPoint.y
+			#~ 
 			origin = Node(startPoint)
-			print "origin created"
-			map.expand(origin)
-			print"expanded"
-			startPathPlanning = False
+			#~ 
+			pq = PriorityQueue()
+			currentNode = origin
+			
+			while not currentNode.pos.equals(goalPoint) and not rospy.is_shutdown():
+				children = mmap.expand(currentNode)
+				for node in children:
+					pq.put((node.cost(), node))
+				
+				currentNode = pq.get()[1]
+				
+			
+			frontierPub.publish(mmap.getGridCell(frontier))
+			exploredPub.publish(mmap.getGridCell(explored))
+			freePub.publish(mmap.getGridCell(free))
+			blockedPub.publish(mmap.getGridCell(blocked))
+			
+			path = GridCells()
+			path.header.frame_id = "map"
+			path.cell_width = resolution
+			path.cell_height = resolution
+			
+			while currentNode.parent is not 0 and not rospy.is_shutdown():
+				point = Point()
+				point.x = currentNode.pos.x*resolution
+				point.y = currentNode.pos.y*resolution
+				point.z = 0
+				path.cells.append(point)
+				currentNode = currentNode.parent
+			
+			pathPub.publish(path)
+			#~ print"expanded"
+			#~ 
+			#~ print "%d"%origin.pos.x + " %d"%origin.pos.y
+			#~ print "a"
+			#~ for node in children:
+				#~ print "%d"%node.pos.x + " %d"%node.pos.y
+			
+			
+			
+			
+			#startPathPlanning = False
 			newGoal = False
     	
 	rospy.spin()
