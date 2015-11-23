@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 
-import rospy
-from std_msgs.msg import String
-from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
+#Libraries
+import rospy, tf, sys, time, math, numpy
+
+#Message Types
 from kobuki_msgs.msg import BumperEvent
-import tf
-import numpy
-import math 
+from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import Header
+from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Quaternion
+from nav_msgs.msg import Odometry
 
 base = .23
 
@@ -47,7 +50,6 @@ def spinWheels(u1, u2, time):
 
 #This function accepts a speed and a distance for the robot to move in a straight line
 def driveStraight(speed, distance):
-    global odom_list
     global pose 	
 
     x0 = pose.pose.position.x	#Set origin
@@ -69,8 +71,8 @@ def driveStraight(speed, distance):
     
 #Accepts an angle and makes the robot rotate around it.
 def rotate(angle):
-    global odom_list
-    global pose
+    #global pose
+    global lst
 
     #This node was created using Coordinate system transforms and numpy arrays.
     #The goal is measured in the turtlebot's frame, transformed to the odom.frame 
@@ -80,8 +82,8 @@ def rotate(angle):
                             [0,          0,          1]])
 
     #Get transforms for frames
-    odom_list.waitForTransform('odom', 'base_footprint', rospy.Time(0), rospy.Duration(4.0))
-    (trans, rot) = odom_list.lookupTransform('odom', 'base_footprint', rospy.Time(0))
+    lst.waitForTransform('odom', 'base_footprint', rospy.Time(0), rospy.Duration(4.0))
+    (trans, rot) = lst.lookupTransform('odom', 'base_footprint', rospy.Time(0))
     T_o_t = transformer.fromTranslationRotation(trans, rot)
     R_o_t = T_o_t[0:3,0:3]
 
@@ -95,7 +97,7 @@ def rotate(angle):
     #Continues creating and matching coordinate transforms.
     done = False
     while (not done and not rospy.is_shutdown()):
-        (trans, rot) = odom_list.lookupTransform('odom', 'base_footprint', rospy.Time(0))
+        (trans, rot) = lst.lookupTransform('odom', 'base_footprint', rospy.Time(0))
         state = transformer.fromTranslationRotation(trans, rot)
         within_tolerance = abs((state - goal_o)) < .275
         if ( within_tolerance.all() ):
@@ -108,91 +110,94 @@ def rotate(angle):
                 spinWheels(-.1,.1,.1)
 
 
-#This function works the same as rotate how ever it does not publish linear velocities.
-def driveArc(radius, speed, angle):
-    global odom_list
+#drive to a goal subscribed as /move_base_simple/goal
+def navToPose(goal):
+	
+	global lst #Transform Listener defined in Main
+	global br #Transform Broadcaster defined in Main
 
-    w = speed / radius
-    v1 = w * (radius + .5*.352)
-    v2 = w * (radius - .5*.352)
+	#goal is of the type geometry_msgs.msg.PoseStamped
+	quat = goal.pose.orientation #quaternion 
+	pos = goal.pose.position
+	
+	#The message has fields x,y,z,(w); but the sendTransform Functions receives tuples
+	goal_position = (pos.x, pos.y, 0)
+	goal_orientation = (quat.x, quat.y, quat.z, quat.w)	
 
-############################# The rest of this function will be at least as long as rotate
+	#Create the goal frame, related to the map
+	goalTime = rospy.Time().now()	
+	br.sendTransform(goal_position,goal_orientation,goalTime, "goal", "map")
+	
+	#Wait until the following transformation is possible
+	lst.waitForTransformFull("base_footprint", rospy.Time(0), "goal", goalTime, "map", rospy.Duration(1))
+	#TODO: Exception handler
+	(trans, rot) = lst.lookupTransformFull("base_footprint", rospy.Time(0), "goal", goalTime, "map") #get the transform between odom and goal
+	
+	#angle between the first orientation and the final one
+	totalAngle = tf.transformations.euler_from_quaternion(rot)[2]
+	angle1 = math.atan2(trans[1], trans[0]) #first turn angle
+	angle2 = from360to180(totalAngle - angle1) #second turn angle
+	
+	distance = math.hypot(trans[0], trans[1]) #distance between points (hypo calculates the hypotenuse)
+	
+	print "spin1 %f"%math.degrees(angle1)
+	rotate(angle1)
 
+	print "move %f"%distance
+	driveStraight(.35,distance)
+	
+	print "spin2 %f"%math.degrees(angle2)
+	rotate(angle2)
 
+	print "done!"
 
-#This function sequentially calls methods to perform a trajectory.
-def executeTrajectory():
-        print("execute")
-	driveStraight(.2, 0.6)	#drive forward 60cm or .6m
-	rotate(-1.57)		#turn right 90 deg or -1.5708 rad
-	driveStraight(.2, 0.45)	#drive forward 45cm or .45m
-	rotate(2.36)		#turn left 135 deg or 2.35619 rad
-        driveStraight(0, 0)
-	rospy.is_shutdown()
-	print "done executing"
+#this function covert an angle from -360~360 to -180~180
+#Examples: 190 -> -170 and -190 -> 170
+def from360to180(angle):
+	if(abs(angle)>math.pi):
+		return angle%math.copysign(math.pi,-angle) #the module of python is different from C/C++ and Java (be careful)
+	
+	return angle#else
 
-        
+#gets the yaw angle from a quaternionMsg
+def yawFromQuatMsg(quat):
+	q = [quat.x, quat.y, quat.z, quat.w]
+	return (tf.transformations.euler_from_quaternion(q))[2]
+
+def readNavGoal(msg):
+	navToPose(msg)
+	
 
 #Odometry Callback function.
 def readOdom(msg):
     global pose
-    global odom_tf
+    global br
 
     pose = msg.pose
     geo_quat = pose.pose.orientation
   
-    odom_tf.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
+    br.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
         (pose.pose.orientation.x, pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w),rospy.Time.now(),"base_footprint","odom")
 
 
-#Bumper Event Callback function
-def readBumper(msg):
-    global bumperState
-	
-    if(msg.state == 1):
-	bumperState = 1
-
-
-#The timer can be used when for saving data to csv files for analysis.
-def timerCallback(event):
- 
-    #with open("/home/joest/trajectory_data.csv", "a") as data_file:
-        #data_file.write(str(x) + "," + str(y) + "," + str(theta) + "\n")
-	pass
-
-#Main handler of the project
-def run():
-    global pub
-    global pose
-    global odom_tf
-    global odom_list
-    global bumperState
-
-    
-    rospy.init_node('lab2')
-    pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist,queue_size=1)
-    sub = rospy.Subscriber('/odom', Odometry, readOdom, queue_size=1)
-    bumper_sub = rospy.Subscriber('/mobile_base/events/bumper', BumperEvent, readBumper)
-    odom_list = tf.TransformListener()
-    odom_tf = tf.TransformBroadcaster()
-    odom_tf.sendTransform((0, 0, 0),(0, 0, 0, 1),rospy.Time.now(),"base_footprint","odom")
-    sleeper = rospy.Duration(3)
-    rospy.sleep(sleeper)
-    rospy.Timer(rospy.Duration(.1), timerCallback)
-
-    while not rospy.is_shutdown():
-        print("starting")
-        executeTrajectory()
-        #spinWheels(0.125, .25, 2)
-        #driveStraight(.1,.1)
-	#rotate(1.5)
-        print("complete")
-        rospy.loginfo("Complete")
-        #rospy.spin() 
-        rospy.is_shutdown()
-
+# This is the program's main function
 if __name__ == '__main__':
-    try:
-        run()
-    except rospy.ROSInterruptException:
-        pass
+	
+	# Change this node name to include your user name
+	rospy.init_node('navToPose')
+	
+	global pub
+	
+	#Set Topics
+	pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size = 1) # Publisher for commanding robot motion
+	rospy.Subscriber('/myGoal', PoseStamped, readNavGoal)
+	rospy.Subscriber('/odom', Odometry, readOdom, queue_size=1)
+
+	global lst
+	global br	
+	br = tf.TransformBroadcaster()
+	lst = tf.TransformListener()
+	
+	time.sleep(1)
+
+	rospy.spin()
