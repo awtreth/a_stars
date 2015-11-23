@@ -295,7 +295,7 @@ def planCallBack(msg):
 	# We can iterate through it as a LinkedList
 	while currentNode.parent is not 0 and not rospy.is_shutdown():
 		# Filter to get the wayPoints
-		if(currentNode.pos.dir is not currentNode.parent.pos.dir): #if we change the dir
+		#if(currentNode.pos.dir is not currentNode.parent.pos.dir): #if we change the dir
 			# the wayPose is the position of the parent and the orientation of the child
 			pose = Pose(currentNode.parent.pos.x, currentNode.parent.pos.y, currentNode.pos.dir)
 			newnode = Node(pose)
@@ -306,21 +306,21 @@ def planCallBack(msg):
 	path.poses = list(reversed(path.poses))
 	
 	#create WayPoints GridCell
-	wayPoints = GridCells()
-	wayPoints.header.frame_id = "map"
-	wayPoints.cell_width = navMap.resolution
-	wayPoints.cell_height = navMap.resolution
-	
-	#Create path from the goal to the startPoint
-	for pose in path.poses :
-		wayPoints.cells.append(pose.pose.position)
-	
-	#print wayPoints.cells
-	
-	#TODO: revert path (to make it from start to the goal"
-	
-	#publish wayPoints and path
-	wayPointsPub.publish(wayPoints)
+	#~ wayPoints = GridCells()
+	#~ wayPoints.header.frame_id = "map"
+	#~ wayPoints.cell_width = navMap.resolution
+	#~ wayPoints.cell_height = navMap.resolution
+	#~ 
+	#~ #Create path from the goal to the startPoint
+	#~ for pose in path.poses :
+		#~ wayPoints.cells.append(pose.pose.position)
+	#~ 
+	#~ #print wayPoints.cells
+	#~ 
+	#~ #TODO: revert path (to make it from start to the goal"
+	#~ 
+	#~ #publish wayPoints and path
+	#~ wayPointsPub.publish(wayPoints)
 	
 	return path
 

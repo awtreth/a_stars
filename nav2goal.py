@@ -125,13 +125,12 @@ def navToPose(goal):
 	goal_orientation = (quat.x, quat.y, quat.z, quat.w)	
 
 	#Create the goal frame, related to the map
-	goalTime = rospy.Time().now()	
-	br.sendTransform(goal_position,goal_orientation,goalTime, "goal", "map")
+	br.sendTransform(goal_position,goal_orientation,rospy.Time().now(), "goal", "map")
 	
 	#Wait until the following transformation is possible
-	lst.waitForTransformFull("base_footprint", rospy.Time(0), "goal", goalTime, "map", rospy.Duration(1))
+	lst.waitForTransform("base_footprint", "goal", rospy.Time(), rospy.Duration(2))
 	#TODO: Exception handler
-	(trans, rot) = lst.lookupTransformFull("base_footprint", rospy.Time(0), "goal", goalTime, "map") #get the transform between odom and goal
+	(trans, rot) = lst.lookupTransform("base_footprint", "goal", rospy.Time(0)) #get the transform between odom and goal
 	
 	#angle between the first orientation and the final one
 	totalAngle = tf.transformations.euler_from_quaternion(rot)[2]
@@ -166,8 +165,60 @@ def yawFromQuatMsg(quat):
 
 def readNavGoal(msg):
 	navToPose(msg)
+
+
+def turnTo(goalAngle, tolerance):
+	global lst
+	global br
+	
+	constant = .7
+	max_vel = 1
+	min_vel = .2
+
+	
+	turnToTime = rospy.Time.now()
+	br.sendTransform((1,1,1),tf.transformations.quaternion_from_euler(0,0,goalAngle),turnToTime, "turn_to", "map")
+	#raw_input("")
+	
+	while not rospy.is_shutdown():
+		#Wait until the following transformation is possible
+		lst.waitForTransformFull("base_footprint", rospy.Time(0), "turn_to", turnToTime, "map", rospy.Duration(2))
+		#TODO: Exception handler
+		(trans, rot) = lst.lookupTransformFull("base_footprint", rospy.Time(0), "turn_to", turnToTime,"map") #get the transform between odom and goal
+		
+		currentDiff = tf.transformations.euler_from_quaternion(rot)[2]
+		
+		print "currentDiff = " + repr(currentDiff)
+		
+		if(abs(currentDiff) <= tolerance):
+			publishTwist(0,0);
+			print "break"
+			break
+		
+		w = currentDiff*constant
+		print "w = " + repr(w)
+		abs_w = abs(w)
+		if(abs_w > max_vel): w = math.copysign(max_vel,w)
+		elif(abs_w < min_vel): w = math.copysign(min_vel,w)
+		
+		publishTwist(0,w);
 	
 
+def moveTo(x,y):
+	global lst
+	global br
+	
+	
+	#Create the goal frame, related to the map
+	br.sendTransform((x,y,0),(0,0,0,1),rospy.Time().now(), "moveTo", "map")
+	
+	#Wait until the following transformation is possible
+	lst.waitForTransform("base_footprint", "goal", rospy.Time(), rospy.Duration(2))
+	#TODO: Exception handler
+	(trans, rot) = lst.lookupTransform("base_footprint", "goal", rospy.Time(0)) #get the transform between odom and goal
+	
+	
+	
 #Odometry Callback function.
 def readOdom(msg):
     global pose
@@ -199,5 +250,8 @@ if __name__ == '__main__':
 	lst = tf.TransformListener()
 	
 	time.sleep(1)
+	
+	turnTo(math.radians(180), math.radians(1))
+	turnTo(math.radians(90), math.radians(1))
 
 	rospy.spin()
