@@ -1,7 +1,7 @@
 #!usr/bin/env python
 
 #import libraries
-import rospy, math, tf
+import rospy, math, tf, time
 
 #import ROS msg classes
 from nav_msgs.msg import OccupancyGrid, GridCells, Path, Odometry
@@ -63,8 +63,6 @@ class NavMap(object):
 		self.goalPoint = goalPoint
 		
 		for i in range(len(self.table)):
-			if(i > (self.height-1)*self.width):
-				print ocmap.data[i]
 			if(ocmap.data[i]>90):
 				self.table[i] = blocked #set the obstacles
 
@@ -96,9 +94,10 @@ class NavMap(object):
 				
 				self.set(pos.x, pos.y, frontier) #uptade the position in the table with FRONTIER
 				
-				pointDiff = self.goalPoint.minus(parent.pos) #get the difference from the goal
+				pointDiff = self.goalPoint.minus(pos) #get the difference from the goal
 				
-				h_n = abs(pointDiff.x) + abs(pointDiff.y) #h_n = abs(dx) + abs(dy) #for 90 degree turn
+				h_n = abs(pointDiff.x) + abs(pointDiff.y)# + (pos.dir+self.goal.dir)%2 #h_n = abs(dx) + abs(dy) #for 90 degree turn
+				#if((pointDiff.x is not 0) and pointDiff.y is not 0): h_n = h_n + 1
 				#TODO: count the number of turns in the heuristic
 				
 				children.append(Node(pos, parent, h_n)) #add the node into the return array
@@ -121,7 +120,7 @@ class NavMap(object):
 	
 	# Check if a point is in bounds
 	def inBounds(self,point):
-		if(point.x > 0 and point.x < self.width and point.y > 0 and point.y < self.height):
+		if(point.x >= 0 and point.x < self.width and point.y >= 0 and point.y < self.height):
 			return True
 		else:
 			return False
@@ -280,6 +279,17 @@ def run():
 				
 				# pop the "closest" node to the goal
 				currentNode = pq.get()[1]
+				#print currentNode.g_n
+				#print currentNode.h_n
+				#print currentNode.cost()
+			
+				# Publish the data in Rviz environment	
+				frontierPub.publish(mmap.getGridCell(frontier))
+				exploredPub.publish(mmap.getGridCell(explored))
+				freePub.publish(mmap.getGridCell(free))
+				blockedPub.publish(mmap.getGridCell(blocked))
+				
+				##raw_input("hit ENTER")
 			
 			# Publish the data in Rviz environment	
 			frontierPub.publish(mmap.getGridCell(frontier))
@@ -324,6 +334,8 @@ def run():
 			#startPathPlanning = False
 			newGoal = False
 			newStart = False
+    	
+    	time.sleep(.5)
     	
 	rospy.spin()
     
