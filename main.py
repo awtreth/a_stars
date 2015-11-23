@@ -37,13 +37,16 @@ if __name__ == '__main__':
 			
 			rospy.wait_for_service('astar_planner')
 			getPath = rospy.ServiceProxy('astar_planner', GetPlan)
-			print "passed"
 			
 			try:
 				path = getPath(startPose, goalPose,0.)
 			except rospy.ServiceException as exc:
 				print("Service did not process request: " + str(exc))
-				
+			#now we have the path
+			#rospy.wait_for_service('nav2goal')
+			#getPath = rospy.ServiceProxy('nav2goal', GetPlan) #we are reusing the GetPlan srv msg to save time
+			
+			
 			newGoal = False
 			
 			
