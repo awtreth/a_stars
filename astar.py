@@ -99,7 +99,7 @@ class NavMap(object):
 				#for 90degree %FIXME: make it generic
 				
 				
-				if(not self.inBounds(pos): #if we don't check, we can get an error in the get method of the next condition
+				if not self.inBounds(pos): #if we don't check, we can get an error in the get method of the next condition
 					continue #this point cannot be expanded
 				else:	# it is above, below or beside (90degree turn) or the position is not FREE
 					if(abs(i)==abs(j) or self.get(pos.x, pos.y) is not CellState.FREE):
@@ -113,7 +113,9 @@ class NavMap(object):
 				pointDiff = self.goalPose.minus(pos) #get the difference from the goal
 				
 				#TODO: I think we can make the difference inside minus() method and use pointDiff.dir as part of the Heuristic
-				h_n = abs(pointDiff.x) + abs(pointDiff.y)# + (pos.dir+self.goalPose.dir)%(Direction.N_DIRECTIONS/2) #h_n = abs(dx) + abs(dy) #for 90 degree turn
+				turn_cost = abs(pos.dir-goalPose.dir)
+				if(turn_cost > Direction.N_DIRECTIONS/2): turn_cost = Direction.N_DIRECTIONS-turn_cost
+				h_n = abs(pointDiff.x) + abs(pointDiff.y) + turn_cost #abs(dx)+abs(dy) is for 90 degree turn
 				#if((pointDiff.x is not 0) and pointDiff.y is not 0): h_n = h_n + 1
 				#TODO: count the number of turns in the heuristic
 				
@@ -174,7 +176,9 @@ class Node(object):
 			self.pos = pos
 			self.parent = parent
 			self.h_n = h_n
-			self.g_n = parent.g_n + 1 + (self.pos.dir+parent.pos.dir)%2
+			turn_cost = abs(self.pos.dir-parent.pos.dir)
+			if(turn_cost > Direction.N_DIRECTIONS/2): turn_cost = Direction.N_DIRECTIONS-turn_cost
+			self.g_n = parent.g_n + 1 + turn_cost
 		else:
 			self.pos = pos
 			self.parent = 0 #check if it is right, because parent is of tyep Node
@@ -185,14 +189,14 @@ class Node(object):
 		return self.g_n + self.h_n
 		
 		
-		
-		
 def readMap(msg):
 	global rosmap
 	rosmap = msg
+	
+def readLocalCostMap(msg):
+	global localCostMap
+	localCostMap = msg
 
-	#print goalPoint.x
-	#print goalPoint.y	
 
 #Helper function that convert a node to PoseStaped ROS msg
 def nodeToPose(node, resolution):
@@ -234,7 +238,7 @@ def planCallBack(startPose, goalPose):
 			pq.put((node.cost(), node)) #it is ranked by the cost
 		
 		if(pq.qsize() == 0):
-			print "didn't find a path" h
+			print "didn't find a path"
 			return Path()
 		
 		# pop the "closest" node to the goal
