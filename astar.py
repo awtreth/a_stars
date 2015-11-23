@@ -9,68 +9,80 @@ from Queue import PriorityQueue
 from geometry_msgs.msg import PoseStamped, Point , PoseWithCovarianceStamped, Pose, Quaternion
 from nav_msgs.srv import GetPlan
 
+#DEFINITION OF ENUM
+#def enum(*sequential, **named):
+#    enums = dict(zip(sequential, range(len(sequential))), **named)
+#    return type('Enum', (), enums)
+def enum(**enums):
+    return type('Enum', (), enums)
+
 #CONSTANTS
 #the best way that we thought to do this was with Enumeration, but Pythond 2.7 does not support it
 #Map points states
-free = 0
-frontier = 1
-explored = 2
-blocked = 3
+CellState = enum(FREE=0, FRONTIER=1, EXPLORED=2, BLOCKED=3)
+
 #Orientation
-west = 0
-north = 1
-east = 2
-south = 3
+Direction = enum(WEST=0, NORTH=1, EAST=2, SOUTH=3, N_DIRECTIONS=4) #90degree turn (starting with WEST)
+#Direction = enum(WEST=0, NORTHWEST=1, NORTH=2, NORTHEAST=3, EAST=4, SOUTHEAST=5, SOUTH=6, SOUTHWEST=7, N_DIRECTIONS=8) #90degree turn (starting with WEST)
+#Direction = enum(NORTHWEST=0, NORTH=1, NORTHEAST=2, EAST=3, SOUTHEAST=4, SOUTH=5, SOUTHWEST=6, WEST=7, N_DIRECTIONS=8) #90degree turn (starting with NORTHWEST)
 
 
 #Helper class
 #It represents a 2D oriented Point, or pose
-class Point(object): #FIXME: actually, it is a Pose (point + orientation)
+class Pose(object): #FIXME: actually, it is a Pose (point + orientation)
 	
 	#constructor
 	def __init__(self, x = 0, y = 0, orientation = 0):
 		self.x = x
 		self.y = y
-		self.dir = orientation #west, north, east or south for 90degrees turn
+		self.dir = orientation #west, NORTH, east or south for 90degrees turn
 
 	#distance
-	def dist(self, otherPoint):
-		return math.sqrt(self.x**2 + self.y**2)
+	def dist(self, otherPose):
+		return math.sqrt((self.x-otherPose.x)**2 + (self.y-otherPose.y)**2)
 		
 	#this - other
-	def minus(self, otherPoint):
-		return Point(self.x-otherPoint.x, self.y-otherPoint.y)
+	def minus(self, otherPose):
+		return Pose(self.x-otherPose.x, self.y-otherPose.y)
 	
 	#this + other
-	def plus(self, otherPoint):
-		return Point(otherPoint.x+self.x, otherPoint.y+self.y)
+	def plus(self, otherPose):
+		return Pose(otherPose.x+self.x, otherPose.y+self.y)
 	
 	#FIXME: check if it is used
-	def equals(self, otherPoint):
-		return self.x == otherPoint.x and self.y == otherPoint.y
+	def equals(self, otherPose):
+		return self.x == otherPose.x and self.y == otherPose.y
 		
 		
 
 #keep tracks of the state of each cell in the map
 class NavMap(object):
 	
-	def __init__(self, ocmap, goalPoint): #ocmap = OccupancyGrid
+	def __init__(self, ocmap, startPose, goalPose, threshold = 99): #ocmap = OccupancyGrid #TODO: maybe we could reate
 		self.resolution = ocmap.info.resolution
 		self.width = ocmap.info.width #just to make it easier to see
 		self.height = ocmap.info.height
 		
 		#where we store the state of the cells
-		self.table = [free]*len(ocmap.data) #at first we all with free value
-		self.goalPoint = goalPoint
+		self.table = [CellState.FREE]*len(ocmap.data) #at first we all with FREE value
+		
+		q = [goalPose.pose.orientation.x, goalPose.pose.orientation.y, goalPose.pose.orientation.z, goalPose.pose.orientation.w]
+		goalDir = round(((tf.transformations.euler_from_quaternion(q))[2]+math.pi)%(2.*math.pi/Direction.N_DIRECTIONS))
+		self.goalPose = Pose(round(goalPose.pose.position.x/self.resolution), round(goalPose.pose.position.y/self.resolution), goalDir)
+		
+		q = [startPose.pose.orientation.x, startPose.pose.orientation.y, startPose.pose.orientation.z, startPose.pose.orientation.w]
+		startDir = round(((tf.transformations.euler_from_quaternion(q))[2]+math.pi)%(2.*math.pi/Direction.N_DIRECTIONS))
+		
+		self.startPose = Pose(round(startPose.pose.position.x/self.resolution), round(startPose.pose.position.y/self.resolution), startDir)
 		
 		for i in range(len(self.table)):
-			if(ocmap.data[i]>90):
-				self.table[i] = blocked #set the obstacles
+			if(ocmap.data[i]>=threshold):
+				self.table[i] = CellState.BLOCKED #set the obstacles
 
 	#return the expanded nodes from the node parent
 	def expand(self, parent): #parent is a node
-		#TODO: we can check if parent is in frontier (we can throw an exception)
-		self.set(parent.pos.x, parent.pos.y, explored) #set the current node as explored
+		#TODO: we can check if parent is in FRONTIER (we can throw an exception)
+		self.set(parent.pos.x, parent.pos.y, CellState.EXPLORED) #set the current node as EXPLORED
 		children = [] #return list
 		
 		#Scan the neighborhood of the node 
@@ -79,25 +91,29 @@ class NavMap(object):
 				#try i == j == 0 to include diagonals
 				
 				#set the position
-				pos = parent.pos.plus(Point(j,i)) #we can have problems with the definition of (i,j) (row,col) and (x,y) FIXME
-				
-				if(not self.inBounds(pos)): #if we don't check, we can get an error in the get method of the next condition
-					continue #this point cannot be expanded
-				else:	# it is above, below or beside (90degree turn) or the position is not free
-					if(abs(i)==abs(j) or self.get(pos.x, pos.y) is not free):
-						continue #this point cannot be expanded
-				
+				pos = parent.pos.plus(Pose(j,i)) #we can have problems with the definition of (i,j) (row,col) and (x,y)
 				#0  -1 -> 0 (west)
-				#-1  0 -> 1 (north)
+				#-1  0 -> 1 (NORTH)
 				#0   1 -> 2 (east)
 				#1   0 -> 3 (south)
+				#for 90degree %FIXME: make it generic
+				
+				
+				if(not self.inBounds(pos): #if we don't check, we can get an error in the get method of the next condition
+					continue #this point cannot be expanded
+				else:	# it is above, below or beside (90degree turn) or the position is not FREE
+					if(abs(i)==abs(j) or self.get(pos.x, pos.y) is not CellState.FREE):
+						continue #this point cannot be expanded
+				
 				pos.dir = abs(2*i+j+1)
 				
-				self.set(pos.x, pos.y, frontier) #uptade the position in the table with FRONTIER
 				
-				pointDiff = self.goalPoint.minus(pos) #get the difference from the goal
+				self.set(pos.x, pos.y, CellState.FRONTIER) #uptade the position in the table with FRONTIER
 				
-				h_n = abs(pointDiff.x) + abs(pointDiff.y)# + (pos.dir+self.goal.dir)%2 #h_n = abs(dx) + abs(dy) #for 90 degree turn
+				pointDiff = self.goalPose.minus(pos) #get the difference from the goal
+				
+				#TODO: I think we can make the difference inside minus() method and use pointDiff.dir as part of the Heuristic
+				h_n = abs(pointDiff.x) + abs(pointDiff.y)# + (pos.dir+self.goalPose.dir)%(Direction.N_DIRECTIONS/2) #h_n = abs(dx) + abs(dy) #for 90 degree turn
 				#if((pointDiff.x is not 0) and pointDiff.y is not 0): h_n = h_n + 1
 				#TODO: count the number of turns in the heuristic
 				
@@ -168,39 +184,18 @@ class Node(object):
 	def cost(self):
 		return self.g_n + self.h_n
 		
-#get the maap
-def globCostCallBack(data):
-	global globMapGrid
-	global startPathPlanning
-	global resolution
-	globMapGrid = data
-	resolution = globMapGrid.info.resolution
-	startPathPlanning = True
+		
+		
+		
+def readMap(msg):
+	global rosmap
+	rosmap = msg
 
-	print "Got the map"
-
-#get the goal point
-def readGoal(msg):
-	global goalPoint
-	global newGoal
-	goalPoint = Point(msg.pose.position.x, msg.pose.position.y)
-	newGoal = True
-	print "got Goal"
-
-#get the start point
-def readStart(msg):
-	global startPoint
-	global newStart
-	startPoint = Point(msg.pose.pose.position.x, msg.pose.pose.position.y)
-	newStart = True
-	print "got start"
-	
 	#print goalPoint.x
 	#print goalPoint.y	
 
 #Helper function that convert a node to PoseStaped ROS msg
-def nodeToPose(node):
-	global resolution #this is not a good programming practice, but it works FIXME
+def nodeToPose(node, resolution):
 	
 	pose = PoseStamped()
 	pose.header.frame_id = "map"
@@ -208,152 +203,117 @@ def nodeToPose(node):
 	point.x = node.pos.x*resolution
 	point.y = node.pos.y*resolution
 	point.z = 0
-	quatTuple = tf.transformations.quaternion_from_euler(0,0,node.pos.dir*math.pi/2);
+	quatTuple = tf.transformations.quaternion_from_euler(0,0,node.pos.dir*(2*math.pi/Direction.N_DIRECTIONS));
 	pose.pose.orientation = Quaternion(quatTuple[0],quatTuple[1], quatTuple[2], quatTuple[3])
 	pose.pose.position = point
 	
 	return pose
 	
 
-def planCallBack(msg):
-	pass
+def planCallBack(startPose, goalPose):
+	global rosmap
+	global frontierPub
+	global exploredPub
+	global freePub
+	global blockedPub
+	global wayPointsPub
+	
+	navMap = NavMap(rosmap, startPose, goalPose)
+	
+	# Create the first node
+	origin = Node(startPose)
+	
+	#PriorityQueue of nodes
+	pq = PriorityQueue()
+	currentNode = origin
+	
+	while not currentNode.pos.equals(goalPose) and not rospy.is_shutdown():
+		children = navMap.expand(currentNode)
+		
+		for node in children:
+			pq.put((node.cost(), node)) #it is ranked by the cost
+		
+		if(pq.qsize() == 0):
+			print "didn't find a path" h
+			return Path()
+		
+		# pop the "closest" node to the goal
+		currentNode = pq.get()[1]
+		#print currentNode.g_n
+		#print currentNode.h_n
+		#print currentNode.cost()
+	
+		# Publish the data in Rviz environment	
+		#~ frontierPub.publish(navMap.getGridCell(CellState.FRONTIER))
+		#~ exploredPub.publish(navMap.getGridCell(CellState.EXPLORED))
+		#~ freePub.publish(navMap.getGridCell(CellState.FREE))
+		#~ blockedPub.publish(navMap.getGridCell(CellState.BLOCKED))
+	
+	# Publish the data in Rviz environment	
+	frontierPub.publish(navMap.getGridCell(CellState.FRONTIER))
+	exploredPub.publish(navMap.getGridCell(CellState.EXPLORED))
+	freePub.publish(navMap.getGridCell(CellState.FREE))
+	blockedPub.publish(navMap.getGridCell(CellState.BLOCKED))
+	
+	#Get the path
+	path = Path()
+	path.header.frame_id = "map"
+	path.poses.append(nodeToPose(currentNode, navMap.resolution))
+	
+	# Since we store the parent node inside each node and the startNode has null parent
+	# We can iterate through it as a LinkedList
+	while currentNode.parent is not 0 and not rospy.is_shutdown():
+		# Filter to get the wayPoints
+		if(currentNode.pos.dir is not currentNode.parent.pos.dir): #if we change the dir
+			# the wayPose is the position of the parent and the orientation of the child
+			pose = Pose(currentNode.parent.pos.x, currentNode.parent.pos.y, currentNode.pos.dir)
+			newnode = Node(pose)
+			path.poses.append(nodeToPose(newnode))
+		
+		currentNode = currentNode.parent #go to the next node
+	
+	path.poses = list(reversed(path.poses))
+	
+	
+	#create WayPoints GridCell
+	wayPoints = GridCells()
+	wayPoints.header.frame_id = "map"
+	wayPoints.cell_width = navMap.resolution
+	wayPoints.cell_height = navMap.resolution
+	
+	#Create path from the goal to the startPoint
+	for pose in path.poses :
+		wayPoints.cells.append(pose.pose.position)
+	
+	#TODO: revert path (to make it from start to the goal"
+	
+	#publish wayPoints and path
+	wayPointsPub.publish(wayPoints)
+	
+	return path
+
 
 #main function
-def run():
-	global goalPoint
-	global newGoal
-	global globMapGrid
-	global startPathPlanning
-	global startPoint
-	global resolution
-	global newStart
+if __name__ == '__main__':
 	
-	startPathPlanning = False
-	newGoal = False
-	newStart = False
+	global frontierPub
+	global exploredPub
+	global freePub
+	global blockedPub
+	global wayPointsPub
 	
-	
-	rospy.init_node('lab3')
+	rospy.init_node('astar')
 	
 	globCostSub = rospy.Subscriber("/map", OccupancyGrid, globCostCallBack)
-	globPlanPub = rospy.Publisher("/aStarPath", Path, queue_size=1)
-	markerSub = rospy.Subscriber('/aStarNavGoal', PoseStamped, readGoal)
-	startSub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, readStart)
 
 	frontierPub = rospy.Publisher("/grid_Frontier", GridCells, queue_size=1)
 	exploredPub = rospy.Publisher("/grid_Explored", GridCells, queue_size=1)
 	freePub = rospy.Publisher("/grid_Free", GridCells, queue_size=1)
 	blockedPub = rospy.Publisher("/grid_Blocked", GridCells, queue_size=1)
-	pathPub = rospy.Publisher("/grid_path", GridCells, queue_size=1)
-    
-    
-	sleeper = rospy.Duration(1)
-	rospy.sleep(sleeper)
+	wayPointsPub = rospy.Publisher("/way_points", GridCells, queue_size=1)
     
 	rospy.Service("astar_planner", GetPlan, planCallBack)
-	
-	
     
-	while not rospy.is_shutdown():
-		
-		# Trigger to start AStar
-		if (startPathPlanning and newGoal and newStart):
-			#convert the points from meters to nGridCells
-			startPoint = Point(round(startPoint.x/resolution), round(startPoint.y/resolution))
-			goalPoint = Point(round(goalPoint.x/resolution), round(goalPoint.y/resolution))
-
-			#create our NavMap based on the read map and the goalPoint
-			mmap = NavMap(globMapGrid, goalPoint)
-			print "map created"
-			
-			# Create the first node
-			origin = Node(startPoint)
-			
-			#PriorityQueue of nodes
-			pq = PriorityQueue()
-			currentNode = origin
-			
-			while not currentNode.pos.equals(goalPoint) and not rospy.is_shutdown():
-				children = mmap.expand(currentNode)
-				
-				for node in children:
-					pq.put((node.cost(), node)) #it is ranked by the cost
-				
-				if(pq.qsize() == 0):
-					print "didn't find a path"
-					break
-				
-				# pop the "closest" node to the goal
-				currentNode = pq.get()[1]
-				#print currentNode.g_n
-				#print currentNode.h_n
-				#print currentNode.cost()
-			
-				# Publish the data in Rviz environment	
-				#~ frontierPub.publish(mmap.getGridCell(frontier))
-				#~ exploredPub.publish(mmap.getGridCell(explored))
-				#~ freePub.publish(mmap.getGridCell(free))
-				#~ blockedPub.publish(mmap.getGridCell(blocked))
-				
-				##raw_input("hit ENTER")
-			
-			# Publish the data in Rviz environment	
-			frontierPub.publish(mmap.getGridCell(frontier))
-			exploredPub.publish(mmap.getGridCell(explored))
-			freePub.publish(mmap.getGridCell(free))
-			blockedPub.publish(mmap.getGridCell(blocked))
-			
-			#Get the path
-			path = Path()
-			path.header.frame_id = "map"
-			path.poses.append(nodeToPose(currentNode))
-			
-			# Since we store the parent node inside each node and the startNode has null parent
-			# We can iterate through it as a LinkedList
-			while currentNode.parent is not 0 and not rospy.is_shutdown():
-				# Filter to get the wayPoints
-				if(currentNode.pos.dir is not currentNode.parent.pos.dir): #if we change the dir
-					# the wayPose is the position of the parent and the orientation of the child
-					point = Point(currentNode.parent.pos.x, currentNode.parent.pos.y, currentNode.pos.dir)
-					newnode = Node(point)
-					path.poses.append(nodeToPose(newnode))
-				
-				currentNode = currentNode.parent #go to the next node
-			
-			#create WayPoints GridCell
-			wayPoints = GridCells()
-			wayPoints.header.frame_id = "map"
-			wayPoints.cell_width = resolution
-			wayPoints.cell_height = resolution
-			
-			#Create path from the goal to the startPoint
-			for pose in path.poses :
-				wayPoints.cells.append(pose.pose.position)
-			
-			#TODO: revert path (to make it from start to the goal"
-			wayPoints.cells = list(reversed(wayPoints.cells))
-			
-			#publish wayPoints and path
-			pathPub.publish(wayPoints)
-			globPlanPub.publish(path)
-			
-			#reset global variables
-			#startPathPlanning = False
-			newGoal = False
-			newStart = False
-    	
-    	time.sleep(.5)
-    	
+	rospy.sleep(1)
+    
 	rospy.spin()
-    
-if __name__ == '__main__':
-	#try:
-	run()
-	#except rospy.ROSInteruptException:
-		#pass
-
-
-
-
-
- 		
