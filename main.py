@@ -1,96 +1,51 @@
 import rospy, math, tf, time 
 
 #import ROS msg classes
-from nav_msgs.msg import OccupancyGrid, GridCells, Path, Odometry 
-from Queue import PriorityQueue
+from nav_msgs.msg import OccupancyGrid, GridCells, Path
 from geometry_msgs.msg import PoseStamped, Point , PoseWithCovarianceStamped, Pose, Quaternion
 from nav_msgs.srv import GetPlan
 
-
-
-
 #Call Backs
-
 def readNavGoal(msg):
-	global nav
-	global goal
-	goal = msg
-	nav = True
+	global goalPose
+	global newGoal
+	goalPose = msg
+	newGoal = True
 
-
-def readOdom(msg):
-	global odom
-	global start
-	global br
-
-	start = odomToPoseStamped(msg.pose)
-	odom = True
-
-
-def run():
-	global start #poseStamped
-	global goal  #poseStamped
-	global path #path
-	global nav
-	global odom
+if __name__ == '__main__':
+	global goalPose
+	global newGoal
+	newGoal = False
 	
-	odom = False
-	nav = False
+	rospy.init_node('nav')
 	
-	
-	
-	rospy.init_node('lab3Main')
-	
-	
-	rospy.Subscriber('/odom', Odometry, readOdom, queue_size=1)
 	rospy.Subscriber('/myGoal', PoseStamped, readNavGoal)
 	
+	br = tf.TransformBroadcaster()
+	lst = tf.TransformListener()
 	
-	sleeper = rospy.Duration(1)
-	rospy.sleep(sleeper)
-	
-	while not odom and not nav and not rospy.is_shutdown():
-		pass
-	
-	#send things to service 
-	#get back path
-	rospy.wait_for_service('astar_planner')
-	getPath = rospy.ServiceProxy('astar_planner', GetPlan)
-	try:
-		path = getPath(start, goal)
-	except rospy.ServiceException as exc:
-		print("Service did not process request: " + str(exc))
+
+	while not rospy.is_shutdown():
+		if(newGoal is True):
+			lst.waitForTransform('map', 'base_footprint', rospy.Time(0), rospy.Duration(4.0))
+			#(trans, rot) = lst.lookupTransform('map', 'base_footprint', rospy.Time(0))
+			
+			startPose = PoseStamped()
+			startPose.header.stamp = rospy.Time.now()
+			startPose.header.frame_id = "base_footprint"
+			startPose = lst.transformPose("map", startPose)
+			
+			rospy.wait_for_service('astar_planner')
+			getPath = rospy.ServiceProxy('astar_planner', GetPlan)
+			print "passed"
+			
+			try:
+				path = getPath(startPose, goalPose,0.)
+			except rospy.ServiceException as exc:
+				print("Service did not process request: " + str(exc))
+				
+			newGoal = False
+			
+			
 		
-		
-	#navTo goal service
-	rospy.wait_for_service('navToGoal')
-	navToGoal = rospy.ServiceProxy('navToGoal', GetPlan)
-	
-	
-	pathCount = 0 
-	while pathCount < path.length() -1 and not rospy.is_shutdown(): #may need fixing
-		
-		try:
-			navToGoal(path[pathCount], path[pathCount + 1 ])
-		except rospy.ServiceException as exc:
-			print("Service did not process request: " + str(exc))
-		
-	
-	
-	
-def odomToPoseStamped(odom):
-	ps = poseStamped()
-	
-	ps.header.frame_id = odom.header.frame_id
-	ps.pose = odom.pose.pose
-
-
-
-
-
-
-__name__ == '__main__':
-	#try:
-	run()
-	#except rospy.ROSInteruptException:
-		#pass
+		rospy.sleep(1)

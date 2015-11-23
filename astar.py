@@ -53,6 +53,12 @@ class Pose(object): #FIXME: actually, it is a Pose (point + orientation)
 	def equals(self, otherPose):
 		return self.x == otherPose.x and self.y == otherPose.y
 		
+	def equalPos(self, other):
+		return self.x == other.x and self.y == other.y 
+		
+	def asString(self):
+		return "(%d, "%self.x + "%d, "%self.y + "%d)"%self.dir
+		
 		
 
 #keep tracks of the state of each cell in the map
@@ -66,12 +72,19 @@ class NavMap(object):
 		#where we store the state of the cells
 		self.table = [CellState.FREE]*len(ocmap.data) #at first we all with FREE value
 		
+		q = [startPose.pose.orientation.x, startPose.pose.orientation.y, startPose.pose.orientation.z, startPose.pose.orientation.w]
+		startDir = abs(round(((tf.transformations.euler_from_quaternion(q))[2]-math.pi)/(2.*math.pi/Direction.N_DIRECTIONS)))%Direction.N_DIRECTIONS
+		
+		#print math.degrees((tf.transformations.euler_from_quaternion(q))[2])
+		
 		q = [goalPose.pose.orientation.x, goalPose.pose.orientation.y, goalPose.pose.orientation.z, goalPose.pose.orientation.w]
-		goalDir = round(((tf.transformations.euler_from_quaternion(q))[2]+math.pi)%(2.*math.pi/Direction.N_DIRECTIONS))
+		goalDir = abs(round(((tf.transformations.euler_from_quaternion(q))[2]-math.pi)/(2.*math.pi/Direction.N_DIRECTIONS)))%Direction.N_DIRECTIONS
+		
+		#print math.degrees((tf.transformations.euler_from_quaternion(q))[2])
 		self.goalPose = Pose(round(goalPose.pose.position.x/self.resolution), round(goalPose.pose.position.y/self.resolution), goalDir)
 		
-		q = [startPose.pose.orientation.x, startPose.pose.orientation.y, startPose.pose.orientation.z, startPose.pose.orientation.w]
-		startDir = round(((tf.transformations.euler_from_quaternion(q))[2]+math.pi)%(2.*math.pi/Direction.N_DIRECTIONS))
+		#print "startDir %d"%startDir
+		#print "goalDir %d"%goalDir
 		
 		self.startPose = Pose(round(startPose.pose.position.x/self.resolution), round(startPose.pose.position.y/self.resolution), startDir)
 		
@@ -97,23 +110,22 @@ class NavMap(object):
 				#0   1 -> 2 (east)
 				#1   0 -> 3 (south)
 				#for 90degree %FIXME: make it generic
+				pos.dir = abs(-2*i+j+1)
 				
 				
-				if not self.inBounds(pos): #if we don't check, we can get an error in the get method of the next condition
+				if not self.inBounds(pos.x,pos.y) or self.get(pos.x,pos.y)==CellState.BLOCKED: #if we don't check, we can get an error in the get method of the next condition
 					continue #this point cannot be expanded
-				else:	# it is above, below or beside (90degree turn) or the position is not FREE
-					if(abs(i)==abs(j) or self.get(pos.x, pos.y) is not CellState.FREE):
+				else:# it is above, below or beside (90degree turn) or the position is not FREE
+					if abs(i)==abs(j) or (self.get(pos.x, pos.y, pos.dir) is not CellState.FREE):
 						continue #this point cannot be expanded
 				
-				pos.dir = abs(2*i+j+1)
 				
-				
-				self.set(pos.x, pos.y, CellState.FRONTIER) #uptade the position in the table with FRONTIER
+				self.set(pos.x, pos.y, CellState.FRONTIER, 2**(pos.dir+2)) #uptade the position in the table with FRONTIER
 				
 				pointDiff = self.goalPose.minus(pos) #get the difference from the goal
 				
 				#TODO: I think we can make the difference inside minus() method and use pointDiff.dir as part of the Heuristic
-				turn_cost = abs(pos.dir-goalPose.dir)
+				turn_cost = abs(pos.dir-self.goalPose.dir)
 				if(turn_cost > Direction.N_DIRECTIONS/2): turn_cost = Direction.N_DIRECTIONS-turn_cost
 				h_n = abs(pointDiff.x) + abs(pointDiff.y) + turn_cost #abs(dx)+abs(dy) is for 90 degree turn
 				#if((pointDiff.x is not 0) and pointDiff.y is not 0): h_n = h_n + 1
@@ -124,22 +136,32 @@ class NavMap(object):
 		return children
 	
 	# get the state of a gridCell in the map
-	def get(self, x, y):
-		if(self.inBounds(Point(x,y)) ):
-			return self.table[int(y*self.width+x)]
+	def get(self, x, y, direction = -1):
+		if(self.inBounds(x,y) ):
+			if(direction is not -1):
+				return self.table[int(y*self.width+x)]&(2**(direction+2))
+			else:
+				return self.table[int(y*self.width+x)]&3
 		else:
 			return 0 #TODO: throw Exception
 	
 	# set the state of a position
-	def set(self, x, y, value):
-		if(self.inBounds(Point(x,y)) ):
-			self.table[int(y*self.width+x)] = value
+	def set(self, x, y, state, direction = -1):
+		if(self.inBounds(x,y) ):
+			idx = int(y*self.width+x)
+			if(direction is not -1):
+				self.table[idx] |= direction
+			
+			if(self.table[idx]&CellState.EXPLORED is not CellState.EXPLORED):
+				self.table[idx] -= self.table[idx]&3
+				self.table[idx] |= state 
 		else:
 			return 0 #TODO: throw Exception
 	
+	
 	# Check if a point is in bounds
-	def inBounds(self,point):
-		if(point.x >= 0 and point.x < self.width and point.y >= 0 and point.y < self.height):
+	def inBounds(self,x,y):
+		if(x >= 0 and x < self.width and y >= 0 and y < self.height):
 			return True
 		else:
 			return False
@@ -214,7 +236,7 @@ def nodeToPose(node, resolution):
 	return pose
 	
 
-def planCallBack(startPose, goalPose):
+def planCallBack(msg):
 	global rosmap
 	global frontierPub
 	global exploredPub
@@ -222,16 +244,19 @@ def planCallBack(startPose, goalPose):
 	global blockedPub
 	global wayPointsPub
 	
-	navMap = NavMap(rosmap, startPose, goalPose)
+	print "received request"
+	
+	navMap = NavMap(rosmap, msg.start, msg.goal)
+	print "created map"
 	
 	# Create the first node
-	origin = Node(startPose)
+	origin = Node(navMap.startPose)
 	
 	#PriorityQueue of nodes
 	pq = PriorityQueue()
 	currentNode = origin
 	
-	while not currentNode.pos.equals(goalPose) and not rospy.is_shutdown():
+	while not currentNode.pos.equalPos(navMap.goalPose) and not rospy.is_shutdown():
 		children = navMap.expand(currentNode)
 		
 		for node in children:
@@ -247,11 +272,13 @@ def planCallBack(startPose, goalPose):
 		#print currentNode.h_n
 		#print currentNode.cost()
 	
+		#print currentNode.pos.asString()
+		#raw_input("");
 		# Publish the data in Rviz environment	
-		#~ frontierPub.publish(navMap.getGridCell(CellState.FRONTIER))
-		#~ exploredPub.publish(navMap.getGridCell(CellState.EXPLORED))
-		#~ freePub.publish(navMap.getGridCell(CellState.FREE))
-		#~ blockedPub.publish(navMap.getGridCell(CellState.BLOCKED))
+		#frontierPub.publish(navMap.getGridCell(CellState.FRONTIER))
+		#exploredPub.publish(navMap.getGridCell(CellState.EXPLORED))
+		#freePub.publish(navMap.getGridCell(CellState.FREE))
+		#blockedPub.publish(navMap.getGridCell(CellState.BLOCKED))
 	
 	# Publish the data in Rviz environment	
 	frontierPub.publish(navMap.getGridCell(CellState.FRONTIER))
@@ -272,12 +299,11 @@ def planCallBack(startPose, goalPose):
 			# the wayPose is the position of the parent and the orientation of the child
 			pose = Pose(currentNode.parent.pos.x, currentNode.parent.pos.y, currentNode.pos.dir)
 			newnode = Node(pose)
-			path.poses.append(nodeToPose(newnode))
+			path.poses.append(nodeToPose(newnode, navMap.resolution))
 		
 		currentNode = currentNode.parent #go to the next node
 	
 	path.poses = list(reversed(path.poses))
-	
 	
 	#create WayPoints GridCell
 	wayPoints = GridCells()
@@ -288,6 +314,8 @@ def planCallBack(startPose, goalPose):
 	#Create path from the goal to the startPoint
 	for pose in path.poses :
 		wayPoints.cells.append(pose.pose.position)
+	
+	#print wayPoints.cells
 	
 	#TODO: revert path (to make it from start to the goal"
 	
@@ -308,13 +336,13 @@ if __name__ == '__main__':
 	
 	rospy.init_node('astar')
 	
-	globCostSub = rospy.Subscriber("/map", OccupancyGrid, globCostCallBack)
+	rospy.Subscriber("/map", OccupancyGrid, readMap)
 
 	frontierPub = rospy.Publisher("/grid_Frontier", GridCells, queue_size=1)
 	exploredPub = rospy.Publisher("/grid_Explored", GridCells, queue_size=1)
 	freePub = rospy.Publisher("/grid_Free", GridCells, queue_size=1)
 	blockedPub = rospy.Publisher("/grid_Blocked", GridCells, queue_size=1)
-	wayPointsPub = rospy.Publisher("/way_points", GridCells, queue_size=1)
+	wayPointsPub = rospy.Publisher("/way_points", GridCells, queue_size=5)
     
 	rospy.Service("astar_planner", GetPlan, planCallBack)
     
