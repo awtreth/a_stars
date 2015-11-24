@@ -7,6 +7,7 @@ import rospy, math, tf, time
 from nav_msgs.msg import OccupancyGrid, GridCells, Path, Odometry
 from Queue import PriorityQueue
 from geometry_msgs.msg import PoseStamped, Point , PoseWithCovarianceStamped, Pose, Quaternion
+from nav_msgs.srv import GetPlan
 
 #CONSTANTS
 #the best way that we thought to do this was with Enumeration, but Pythond 2.7 does not support it
@@ -214,6 +215,9 @@ def nodeToPose(node):
 	return pose
 	
 
+def planCallBack(msg):
+	pass
+
 #main function
 def run():
 	global goalPoint
@@ -246,6 +250,8 @@ def run():
 	sleeper = rospy.Duration(1)
 	rospy.sleep(sleeper)
     
+	rospy.Service("astar_planner", GetPlan, planCallBack)
+	
 	
     
 	while not rospy.is_shutdown():
@@ -284,10 +290,10 @@ def run():
 				#print currentNode.cost()
 			
 				# Publish the data in Rviz environment	
-				frontierPub.publish(mmap.getGridCell(frontier))
-				exploredPub.publish(mmap.getGridCell(explored))
-				freePub.publish(mmap.getGridCell(free))
-				blockedPub.publish(mmap.getGridCell(blocked))
+				#~ frontierPub.publish(mmap.getGridCell(frontier))
+				#~ exploredPub.publish(mmap.getGridCell(explored))
+				#~ freePub.publish(mmap.getGridCell(free))
+				#~ blockedPub.publish(mmap.getGridCell(blocked))
 				
 				##raw_input("hit ENTER")
 			
@@ -325,6 +331,7 @@ def run():
 				wayPoints.cells.append(pose.pose.position)
 			
 			#TODO: revert path (to make it from start to the goal"
+			wayPoints.cells = list(reversed(wayPoints.cells))
 			
 			#publish wayPoints and path
 			pathPub.publish(wayPoints)
