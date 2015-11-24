@@ -19,7 +19,7 @@ if __name__ == '__main__':
 	
 	rospy.init_node('nav')
 	
-	rospy.Subscriber('/myGoal', PoseStamped, readNavGoal)
+	rospy.Subscriber('/globalGoal', PoseStamped, readNavGoal)
 	
 	br = tf.TransformBroadcaster()
 	lst = tf.TransformListener()
@@ -43,9 +43,10 @@ if __name__ == '__main__':
 			except rospy.ServiceException as exc:
 				print("Service did not process request: " + str(exc))
 			#now we have the path
-			#rospy.wait_for_service('nav2goal')
-			#getPath = rospy.ServiceProxy('nav2goal', GetPlan) #we are reusing the GetPlan srv msg to save time
-			
+			for pose in path.plan.poses:
+				rospy.wait_for_service('nav2goal')
+				askMovement = rospy.ServiceProxy('nav2goal', GetPlan) #we are reusing the GetPlan srv msg to save time
+				ans = askMovement(startPose,pose,0.)
 			
 			newGoal = False
 			

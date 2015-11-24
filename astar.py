@@ -127,7 +127,7 @@ class NavMap(object):
 				#TODO: I think we can make the difference inside minus() method and use pointDiff.dir as part of the Heuristic
 				turn_cost = abs(pos.dir-self.goalPose.dir)
 				if(turn_cost > Direction.N_DIRECTIONS/2): turn_cost = Direction.N_DIRECTIONS-turn_cost
-				h_n = abs(pointDiff.x) + abs(pointDiff.y) + turn_cost #abs(dx)+abs(dy) is for 90 degree turn
+				h_n = abs(pointDiff.x) + abs(pointDiff.y) #+ turn_cost #abs(dx)+abs(dy) is for 90 degree turn
 				#if((pointDiff.x is not 0) and pointDiff.y is not 0): h_n = h_n + 1
 				#TODO: count the number of turns in the heuristic
 				
@@ -229,7 +229,7 @@ def nodeToPose(node, resolution):
 	point.x = node.pos.x*resolution
 	point.y = node.pos.y*resolution
 	point.z = 0
-	quatTuple = tf.transformations.quaternion_from_euler(0,0,node.pos.dir*(2*math.pi/Direction.N_DIRECTIONS));
+	quatTuple = tf.transformations.quaternion_from_euler(0,0,math.pi-node.pos.dir*(2*math.pi/Direction.N_DIRECTIONS));
 	pose.pose.orientation = Quaternion(quatTuple[0],quatTuple[1], quatTuple[2], quatTuple[3])
 	pose.pose.position = point
 	
@@ -290,37 +290,41 @@ def planCallBack(msg):
 	path = Path()
 	path.header.frame_id = "map"
 	path.poses.append(nodeToPose(currentNode, navMap.resolution))
+	print "("+repr(currentNode.pos.x)+", "+repr(currentNode.pos.y) + ", " + repr(currentNode.pos.dir) + ')'
 	
 	# Since we store the parent node inside each node and the startNode has null parent
 	# We can iterate through it as a LinkedList
 	while currentNode.parent is not 0 and not rospy.is_shutdown():
 		# Filter to get the wayPoints
-		#if(currentNode.pos.dir is not currentNode.parent.pos.dir): #if we change the dir
+		if(currentNode.pos.dir is not currentNode.parent.pos.dir): #if we change the dir
 			# the wayPose is the position of the parent and the orientation of the child
 			pose = Pose(currentNode.parent.pos.x, currentNode.parent.pos.y, currentNode.pos.dir)
+			print "("+repr(currentNode.parent.pos.x)+", "+repr(currentNode.parent.pos.y) + ", " + repr(currentNode.pos.dir) + ')'
 			newnode = Node(pose)
 			path.poses.append(nodeToPose(newnode, navMap.resolution))
 		
 		currentNode = currentNode.parent #go to the next node
 	
+	del path.poses[-1] #take the startPoint off
+	
 	path.poses = list(reversed(path.poses))
 	
 	#create WayPoints GridCell
-	#~ wayPoints = GridCells()
-	#~ wayPoints.header.frame_id = "map"
-	#~ wayPoints.cell_width = navMap.resolution
-	#~ wayPoints.cell_height = navMap.resolution
-	#~ 
-	#~ #Create path from the goal to the startPoint
-	#~ for pose in path.poses :
-		#~ wayPoints.cells.append(pose.pose.position)
-	#~ 
-	#~ #print wayPoints.cells
-	#~ 
-	#~ #TODO: revert path (to make it from start to the goal"
-	#~ 
-	#~ #publish wayPoints and path
-	#~ wayPointsPub.publish(wayPoints)
+	wayPoints = GridCells()
+	wayPoints.header.frame_id = "map"
+	wayPoints.cell_width = navMap.resolution
+	wayPoints.cell_height = navMap.resolution
+	
+	#Create path from the goal to the startPoint
+	for pose in path.poses :
+		wayPoints.cells.append(pose.pose.position)
+	
+	#print wayPoints.cells
+	
+	#TODO: revert path (to make it from start to the goal"
+	
+	#publish wayPoints and path
+	wayPointsPub.publish(wayPoints)
 	
 	return path
 
@@ -336,7 +340,8 @@ if __name__ == '__main__':
 	
 	rospy.init_node('astar')
 	
-	rospy.Subscriber("/map", OccupancyGrid, readMap)
+	#rospy.Subscriber("/map", OccupancyGrid, readMap)
+	rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, readMap)
 
 	frontierPub = rospy.Publisher("/grid_Frontier", GridCells, queue_size=1)
 	exploredPub = rospy.Publisher("/grid_Explored", GridCells, queue_size=1)

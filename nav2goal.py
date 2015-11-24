@@ -4,13 +4,13 @@
 import rospy, tf, sys, time, math, numpy
 
 #Message Types
-from kobuki_msgs.msg import BumperEvent
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Header
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Quaternion
-from nav_msgs.msg import Odometry
+from nav_msgs.srv import GetPlan
+from nav_msgs.msg import Path
 
 #This function consumes linear and angular velocities
 #and creates a Twist message.  This message is then published.
@@ -36,6 +36,7 @@ def navToPose(goal):
 	#The message has fields x,y,z,(w); but the sendTransform Functions receives tuples
 	goal_position = (pos.x, pos.y, 0)
 	goal_orientation = (quat.x, quat.y, quat.z, quat.w)	
+	print "goalAngle = " + repr(math.degrees(tf.transformations.euler_from_quaternion(goal_orientation)[2]))
 
 	#Create the goal frame, related to the map
 	br.sendTransform(goal_position,goal_orientation,rospy.Time().now(), "goal", "map")
@@ -163,17 +164,11 @@ def moveTo(x,y, tolerance):
 		
 		publishTwist(vel,w)
 		
-	
-#Odometry Callback function.
-def readOdom(msg):
-    global pose
-    global br
 
-    pose = msg.pose
-    geo_quat = pose.pose.orientation
-  
-    br.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
-        (pose.pose.orientation.x, pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w),rospy.Time.now(),"base_footprint","odom")
+def serviceCallBack(msg):
+	print "service"
+	navToPose(msg.goal)
+	return Path()
 
 
 # This is the program's main function
@@ -186,14 +181,16 @@ if __name__ == '__main__':
 	
 	#Set Topics
 	pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size = 1) # Publisher for commanding robot motion
-	rospy.Subscriber('/myGoal', PoseStamped, readNavGoal)
-	rospy.Subscriber('/odom', Odometry, readOdom, queue_size=1)
+	#rospy.Subscriber('/myGoal', PoseStamped, readNavGoal)
 
 	global lst
 	global br	
 	br = tf.TransformBroadcaster()
 	lst = tf.TransformListener()
+	rospy.Service("nav2goal", GetPlan, serviceCallBack)
 	
 	time.sleep(1)
+	
+	
 	
 	rospy.spin()
