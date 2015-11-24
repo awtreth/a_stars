@@ -290,20 +290,20 @@ def planCallBack(msg):
 	path = Path()
 	path.header.frame_id = "map"
 	path.poses.append(msg.goal)
-	path.poses.append(nodeToPose(currentNode, navMap.resolution))
+	#path.poses.append(nodeToPose(currentNode, navMap.resolution))
 	print "("+repr(currentNode.pos.x)+", "+repr(currentNode.pos.y) + ", " + repr(currentNode.pos.dir) + ')'
 	
 	# Since we store the parent node inside each node and the startNode has null parent
 	# We can iterate through it as a LinkedList
 	while currentNode.parent is not 0 and not rospy.is_shutdown():
 		# Filter to get the wayPoints
-		if(currentNode.pos.dir is not currentNode.parent.pos.dir): #if we change the dir
+		#if(currentNode.pos.dir is not currentNode.parent.pos.dir): #if we change the dir
 			# the wayPose is the position of the parent and the orientation of the child
-			pose = Pose(currentNode.parent.pos.x, currentNode.parent.pos.y, currentNode.pos.dir)
-			print "("+repr(currentNode.parent.pos.x)+", "+repr(currentNode.parent.pos.y) + ", " + repr(currentNode.pos.dir) + ')'
-			newnode = Node(pose)
-			path.poses.append(nodeToPose(newnode, navMap.resolution))
-		
+			#pose = Pose(currentNode.parent.pos.x, currentNode.parent.pos.y, currentNode.pos.dir)
+			#print "("+repr(currentNode.parent.pos.x)+", "+repr(currentNode.parent.pos.y) + ", " + repr(currentNode.pos.dir) + ')'
+			#newnode = Node(pose)
+			#path.poses.append(nodeToPose(newnode, navMap.resolution))
+		path.poses.append(nodeToPose(currentNode, navMap.resolution))
 		currentNode = currentNode.parent #go to the next node
 	
 	del path.poses[-1] #take the startPoint off
@@ -311,21 +311,21 @@ def planCallBack(msg):
 	path.poses = list(reversed(path.poses))
 	
 	#create WayPoints GridCell
-	wayPoints = GridCells()
-	wayPoints.header.frame_id = "map"
-	wayPoints.cell_width = navMap.resolution
-	wayPoints.cell_height = navMap.resolution
-	
-	#Create path from the goal to the startPoint
-	for pose in path.poses :
-		wayPoints.cells.append(pose.pose.position)
-	
-	#print wayPoints.cells
-	
-	#TODO: revert path (to make it from start to the goal"
-	
-	#publish wayPoints and path
-	wayPointsPub.publish(wayPoints)
+	#~ wayPoints = GridCells()
+	#~ wayPoints.header.frame_id = "map"
+	#~ wayPoints.cell_width = navMap.resolution
+	#~ wayPoints.cell_height = navMap.resolution
+	#~ 
+	#~ #Create path from the goal to the startPoint
+	#~ for pose in path.poses :
+		#~ wayPoints.cells.append(pose.pose.position)
+	#~ 
+	#~ #print wayPoints.cells
+	#~ 
+	#~ #TODO: revert path (to make it from start to the goal"
+	#~ 
+	#~ #publish wayPoints and path
+	#~ wayPointsPub.publish(wayPoints)
 	
 	return path
 
