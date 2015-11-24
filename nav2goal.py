@@ -62,10 +62,10 @@ def navToPose(goal):
 	
 	
 	print "turn1angle = " + repr(math.degrees(turn1angle))
-	turnTo(turn1angle, math.radians(5))
+	turnTo(turn1angle, math.radians(1))
 	moveTo(goal.pose.position.x, goal.pose.position.y, .1)
 	print "turn2angle = " + repr(math.degrees(turn2angle))
-	turnTo(turn2angle, math.radians(5))
+	turnTo(turn2angle, math.radians(1))
 	print "done"
 
 
@@ -90,9 +90,9 @@ def turnTo(goalAngle, tolerance):
 	global lst
 	global br
 	
-	constant = .7
+	constant = .6
 	max_vel = 1
-	min_vel = .2
+	min_vel = .15
 
 	
 	turnToTime = rospy.Time.now()
@@ -119,7 +119,7 @@ def turnTo(goalAngle, tolerance):
 		abs_w = abs(w)
 		if(abs_w > max_vel): w = math.copysign(max_vel,w)
 		elif(abs_w < min_vel): w = math.copysign(min_vel,w)
-		
+
 		publishTwist(0,w);
 	
 
@@ -160,8 +160,7 @@ def moveTo(x,y, tolerance):
 		w = kp_w*angle
 		#print "w1 = " + repr(w)
 		if(abs(w) > max_w): w = math.copysign(max_w,w)
-		#print "w2 = " + repr(w)
-		
+
 		publishTwist(vel,w)
 		
 

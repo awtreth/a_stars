@@ -289,6 +289,7 @@ def planCallBack(msg):
 	#Get the path
 	path = Path()
 	path.header.frame_id = "map"
+	path.poses.append(msg.goal)
 	path.poses.append(nodeToPose(currentNode, navMap.resolution))
 	print "("+repr(currentNode.pos.x)+", "+repr(currentNode.pos.y) + ", " + repr(currentNode.pos.dir) + ')'
 	
