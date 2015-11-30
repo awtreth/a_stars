@@ -39,12 +39,13 @@ def navToPose(goal, tolerance):
 	print "goalAngle = " + repr(math.degrees(tf.transformations.euler_from_quaternion(goal_orientation)[2]))
 
 	#Create the goal frame, related to the map
-	br.sendTransform(goal_position,goal_orientation,rospy.Time().now(), "goal", "map")
+	goalTime = rospy.Time.now()
+	br.sendTransform(goal_position,goal_orientation,goalTime, "goal", "map")
 	
 	#Wait until the following transformation is possible
-	lst.waitForTransform("base_footprint", "goal", rospy.Time(), rospy.Duration(2))
+	lst.waitForTransformFull("base_footprint", rospy.Time(), "goal", goalTime, "map", rospy.Duration(2))
 	#TODO: Exception handler
-	(trans, rot) = lst.lookupTransform("base_footprint", "goal", rospy.Time(0)) #get the transform between odom and goal
+	(trans, rot) = lst.lookupTransformFull("base_footprint", rospy.Time(), "goal", goalTime, "map") #get the transform between odom and goal
 	
 	dist = math.hypot(trans[1], trans[0])
 	
