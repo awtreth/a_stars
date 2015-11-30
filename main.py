@@ -15,30 +15,8 @@ def readNavGoal(msg):
 def readGlobalMap(msg):
 	global localMap
 	global br
-	global gotPlan
-	global plan
-	global indexes
 	
 	localMap = msg
-	
-	origin = msg.info.origin.position #point
-	resolution = msg.info.resolution #float
-	data = msg.data #int[]
-	width = msg.info.width
-	
-	
-	if(gotPlan):
-		
-		for pose in plan:
-			
-			x = (pose.pose.position.x-origin.x)/resolution
-			y = (pose.pose.position.y-origin.y)/resolution
-			
-			if(data[int(y*width+x)] >= 99):
-				#stop the robot
-				#requestNewPlan = True
-		
-	
 	
 	#goal is of the type geometry_msgs.msg.PoseStamped
 	quat = localMap.info.origin.orientation #quaternion 
@@ -96,9 +74,9 @@ def pubWayPoints(path):
 
 	wayPointsTopic.publish(grid)
 
-def distance(first, second):
-	dx = first.pose.position.x - second.position.x
-	dy = first.pose.position.y - second.position.y
+def dist(first, second):
+	dx = first.pose.position.x - second.pose.position.x
+	dy = first.pose.position.y - second.pose.position.y
 	
 	return math.hypot(dx,dy)
 
@@ -108,11 +86,7 @@ if __name__ == '__main__':
 	global newGoal
 	global localMap
 	global wayPointsTopic
-	global gotPlan
-	global plan
-	global indexes
 	
-	gotPan = false
 	
 	global br
 	global lst
@@ -124,18 +98,13 @@ if __name__ == '__main__':
 	wayPointsTopic = rospy.Publisher('/way_points', GridCells, queue_size=1)
 	
 	rospy.Subscriber('/globalGoal', PoseStamped, readNavGoal)
-	rospy.Subscriber('/move_base/global_costmap/costmap', OccupancyGrid, readGlobalMap)
+	rospy.Subscriber('/move_base/local_costmap/costmap', OccupancyGrid, readGlobalMap)
 	
 	br = tf.TransformBroadcaster()
 	lst = tf.TransformListener()
 
 	while not rospy.is_shutdown():
 		if(newGoal is True):
-			
-			if(getNewPlan):
-				
-			
-			
 			
 			lst.waitForTransform('map', 'base_footprint', rospy.Time(0), rospy.Duration(5.0))
 			#(trans, rot) = lst.lookupTransform('map', 'base_footprint', rospy.Time(0))
@@ -154,8 +123,6 @@ if __name__ == '__main__':
 				path = getPath(startPose, goalPose,0.)
 			except rospy.ServiceException as exc:
 				print("Service did not process request: " + str(exc))
-				
-			
 			
 			print "got the plan"
 			finalPlan = Path()
@@ -170,35 +137,13 @@ if __name__ == '__main__':
 			
 			lastPose = path.plan.poses[0]
 			
-			indexes = []
-			
 			for i in range(len(plan)):
-				#~ if(not inLocalMap(pose)):
-					#~ finalPlan.poses.append(lastPose)
-					#~ break
-				
-				if(abs(yawFromQuatMsg(plan[i].pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1): #if we change the dir
-					#~ newPose = PoseStamped()
-					#~ newPose.pose.orientation = pose.pose.orientation
-					#~ newPose.pose.position = lastPose.pose.position
-					#~ finalPlan.poses.append(newPose)
-					if(plan[i].pose.position is lastPose.pose.position):
-						finalPlan.poses[-1].pose.orientation = plan[i].pose.orientation
-					else:
-						finalPlan.poses.append(plan[i])
-						
-					indexes.append(i)
+				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1) or dist(startPose, pose) > .5 or pose is path.plan.poses[-1]: #if we change the dir
+					print "Got WayPoint"
+					finalPlan.poses.append(pose)
+					break
 				
 				lastPose = pose
-			
-			if len(finalPlan.poses) is 0:
-				finalPlan.poses.append(path.plan.poses[-1])
-			elif finalPlan.poses[-1].pose.position is not path.plan.poses[-1].pose.position:
-				finalPlan.poses.append(path.plan.poses[-1])
-			
-			finalPlan.poses[-1].pose.orientation = path.plan.poses[-1].pose.orientation
-			
-			pubWayPoints(finalPlan)
 			
 			#uncomment this if you are not running nav2goal
 			#newGoal = False
@@ -209,10 +154,8 @@ if __name__ == '__main__':
 				rospy.wait_for_service('nav2goal')
 				askMovement = rospy.ServiceProxy('nav2goal', GetPlan) #we are reusing the GetPlan srv msg to save time
 				ans = askMovement(startPose,pose,0.)
-				indexes.pop()
-			
-			newGoal = False
-			gotPlan = False
-			
+
+			if(finalPlan.poses[0] is path.plan.poses[-1]):
+				newGoal = False
 		
 		rospy.sleep(1)

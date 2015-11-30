@@ -67,10 +67,10 @@ def navToPose(goal, tolerance):
 	
 	
 	print "turn1angle = " + repr(math.degrees(turn1angle))
-	turnTo(turn1angle, math.radians(1.5))
+	turnTo(turn1angle, math.radians(2))
 	moveTo(goal.pose.position.x, goal.pose.position.y, tolerance)
 	print "turn2angle = " + repr(math.degrees(turn2angle))
-	turnTo(turn2angle, math.radians(1.5))
+	turnTo(turn2angle, math.radians(2))
 	print "done"
 
 
@@ -95,9 +95,9 @@ def turnTo(goalAngle, tolerance):
 	global lst
 	global br
 	
-	constant = .3
+	constant = .4
 	max_vel = 1
-	min_vel = .2
+	min_vel = .25
 
 	
 	turnToTime = rospy.Time.now()
@@ -136,8 +136,8 @@ def moveTo(x,y, tolerance):
 	#Create the goal frame, related to the map
 	br.sendTransform((x,y,0),(0,0,0,1),moveToTime, "move_to", "map")
 	
-	kp_w = .6
-	max_w = .4
+	kp_w = .5
+	max_w = .3
 	kp_vel = .4
 	max_vel = .4
 	min_vel = .1
@@ -149,7 +149,7 @@ def moveTo(x,y, tolerance):
 		dist = math.hypot(trans[0], trans[1])
 		#print "dist = " + repr(dist)
 		
-		print "x: " + repr(trans[0]) + " dist:" + repr(dist)
+		#print "x: " + repr(trans[0]) + " dist:" + repr(dist)
 		
 		if(dist <= tolerance or trans[0] < 0):
 			print "break move"
