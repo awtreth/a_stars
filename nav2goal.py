@@ -24,7 +24,7 @@ def publishTwist(lin_vel, ang_vel):
     pub.publish(twist_msg)		#Send Message
 
 #drive to a goal subscribed as /move_base_simple/goal
-def navToPose(goal):
+def navToPose(goal, tolerance):
 	
 	global lst #Transform Listener defined in Main
 	global br #Transform Broadcaster defined in Main
@@ -46,9 +46,13 @@ def navToPose(goal):
 	#TODO: Exception handler
 	(trans, rot) = lst.lookupTransform("base_footprint", "goal", rospy.Time(0)) #get the transform between odom and goal
 	
+	dist = math.hypot(trans[1], trans[0])
+	
 	#angle between the first orientation and the final one
-	#totalAngle = tf.transformations.euler_from_quaternion(rot)[2]
-	baseGoalAngle = math.atan2(trans[1], trans[0]) #first turn angle
+	if(dist > tolerance):
+		baseGoalAngle = math.atan2(trans[1], trans[0]) #first turn angle
+	else:
+		baseGoalAngle = 0
 	
 	#Wait until the following transformation is possible
 	lst.waitForTransform("map", "base_footprint", rospy.Time(), rospy.Duration(2))
@@ -62,10 +66,10 @@ def navToPose(goal):
 	
 	
 	print "turn1angle = " + repr(math.degrees(turn1angle))
-	turnTo(turn1angle, math.radians(1))
-	moveTo(goal.pose.position.x, goal.pose.position.y, .1)
+	turnTo(turn1angle, math.radians(1.5))
+	moveTo(goal.pose.position.x, goal.pose.position.y, tolerance)
 	print "turn2angle = " + repr(math.degrees(turn2angle))
-	turnTo(turn2angle, math.radians(1))
+	turnTo(turn2angle, math.radians(1.5))
 	print "done"
 
 
@@ -83,16 +87,16 @@ def yawFromQuatMsg(quat):
 	return (tf.transformations.euler_from_quaternion(q))[2]
 
 def readNavGoal(msg):
-	navToPose(msg)
+	navToPose(msg,.05)
 
 
 def turnTo(goalAngle, tolerance):
 	global lst
 	global br
 	
-	constant = .6
+	constant = .3
 	max_vel = 1
-	min_vel = .15
+	min_vel = .2
 
 	
 	turnToTime = rospy.Time.now()
@@ -131,11 +135,11 @@ def moveTo(x,y, tolerance):
 	#Create the goal frame, related to the map
 	br.sendTransform((x,y,0),(0,0,0,1),moveToTime, "move_to", "map")
 	
-	kp_w = .5
-	max_w = .3
-	kp_vel = .5
+	kp_w = .6
+	max_w = .4
+	kp_vel = .4
 	max_vel = .4
-	min_vel = .15
+	min_vel = .1
 	
 	while not rospy.is_shutdown():
 		lst.waitForTransformFull("base_footprint", rospy.Time(0), "move_to", moveToTime, "map", rospy.Duration(2))
@@ -144,7 +148,9 @@ def moveTo(x,y, tolerance):
 		dist = math.hypot(trans[0], trans[1])
 		#print "dist = " + repr(dist)
 		
-		if(dist <= tolerance):
+		print "x: " + repr(trans[0]) + " dist:" + repr(dist)
+		
+		if(dist <= tolerance or trans[0] < 0):
 			print "break move"
 			publishTwist(0,0)
 			break
@@ -166,7 +172,7 @@ def moveTo(x,y, tolerance):
 
 def serviceCallBack(msg):
 	print "service"
-	navToPose(msg.goal)
+	navToPose(msg.goal, .05)
 	return Path()
 
 

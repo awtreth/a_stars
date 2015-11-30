@@ -10,6 +10,7 @@ Panels:
         - /Global Planning1
         - /Global Planning1/Planner1
         - /AStar1
+        - /AStar1/Way Points1
       Splitter Ratio: 0.493113
     Tree Height: 584
   - Class: rviz/Selection
@@ -553,10 +554,10 @@ Visualization Manager:
         - Alpha: 1
           Class: rviz/GridCells
           Color: 0; 85; 255
-          Enabled: true
+          Enabled: false
           Name: Frontier
           Topic: /grid_Frontier
-          Value: true
+          Value: false
         - Alpha: 1
           Class: rviz/GridCells
           Color: 255; 255; 255
@@ -607,22 +608,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 10.7433
+      Distance: 14.0647
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -1.86311
-        Y: 0.955902
-        Z: -0.255366
+        X: 0.722356
+        Y: 1.64637
+        Z: -0.319575
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 1.5698
+      Pitch: 1.5448
       Target Frame: base_link
       Value: Orbit (rviz)
-      Yaw: 6.11821
+      Yaw: 6.14821
     Saved: ~
 Window Geometry:
   Displays:
@@ -640,5 +641,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 912
-  X: 868
-  Y: 80
+  X: 869
+  Y: 106

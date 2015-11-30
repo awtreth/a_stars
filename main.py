@@ -60,11 +60,24 @@ def inLocalMap(globalPose):
 	if(x<width and x>=0 and y<height and y>=0): return True
 	else: return False
 
+def pubWayPoints(path):
+	global wayPointsTopic
+	global localMap
+	
+	grid = GridCells()
+	grid.header.frame_id = "map"
+	grid.cell_width = localMap.info.resolution
+	grid.cell_height = localMap.info.resolution
+	for pose in path.poses:
+		grid.cells.append(pose.pose.position)
+
+	wayPointsTopic.publish(grid)
 
 if __name__ == '__main__':
 	global goalPose
 	global newGoal
 	global localMap
+	global wayPointsTopic
 	
 	global br
 	global lst
@@ -72,6 +85,8 @@ if __name__ == '__main__':
 	newGoal = False
 	
 	rospy.init_node('nav')
+	
+	wayPointsTopic = rospy.Publisher('/way_points', GridCells, queue_size=1)
 	
 	rospy.Subscriber('/globalGoal', PoseStamped, readNavGoal)
 	rospy.Subscriber('/move_base/local_costmap/costmap', OccupancyGrid, readLocalMap)
@@ -85,19 +100,27 @@ if __name__ == '__main__':
 			#(trans, rot) = lst.lookupTransform('map', 'base_footprint', rospy.Time(0))
 			
 			startPose = PoseStamped()
-			startPose.header.stamp = rospy.Time.now()
+			startPose.header.stamp = rospy.Time()
 			startPose.header.frame_id = "base_footprint"
 			startPose = lst.transformPose("map", startPose)
 			
 			rospy.wait_for_service('astar_planner')
 			getPath = rospy.ServiceProxy('astar_planner', GetPlan)
 			
+			path = GetPlan()
+			
 			try:
 				path = getPath(startPose, goalPose,0.)
 			except rospy.ServiceException as exc:
 				print("Service did not process request: " + str(exc))
 			
+			print "got the plan"
 			finalPlan = Path()
+			
+			if len(path.plan.poses) is 0:
+				print "no path"
+				newGoal = False
+				continue
 			
 			lastPose = path.plan.poses[0]
 			
@@ -107,14 +130,29 @@ if __name__ == '__main__':
 					#~ break
 					
 				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1): #if we change the dir
-					newPose = PoseStamped()
-					newPose.pose.orientation = pose.pose.orientation
-					newPose.pose.position = lastPose.pose.position
-					finalPlan.poses.append(newPose)
+					#~ newPose = PoseStamped()
+					#~ newPose.pose.orientation = pose.pose.orientation
+					#~ newPose.pose.position = lastPose.pose.position
+					#~ finalPlan.poses.append(newPose)
+					if(pose.pose.position is lastPose.pose.position):
+						finalPlan.poses[-1].pose.orientation = pose.pose.orientation
+					else:
+						finalPlan.poses.append(pose)
+				
 				lastPose = pose
 			
-			#if(finalPlan.poses[-1].pose.position is not goalPose.pose.position):
-			finalPlan.poses.append(goalPose)
+			if len(finalPlan.poses) is 0:
+				finalPlan.poses.append(path.plan.poses[-1])
+			elif finalPlan.poses[-1].pose.position is not path.plan.poses[-1].pose.position:
+				finalPlan.poses.append(path.plan.poses[-1])
+			
+			finalPlan.poses[-1].pose.orientation = path.plan.poses[-1].pose.orientation
+			
+			pubWayPoints(finalPlan)
+			
+			#uncomment this if you are not running nav2goal
+			#newGoal = False
+			#continue
 			
 			#now we have the path
 			for pose in finalPlan.poses:
