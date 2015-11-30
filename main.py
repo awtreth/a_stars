@@ -16,13 +16,28 @@ def readGlobalMap(msg):
 	global localMap
 	global br
 	global gotPlan
+	global plan
+	global indexes
 	
 	localMap = msg
 	
-	if(gotPlan):
-		#check intersection with the plan
-		#if it has, stop the robot and request a new plan
+	origin = msg.info.origin.position #point
+	resolution = msg.info.resolution #float
+	data = msg.data #int[]
+	width = msg.info.width
 	
+	
+	if(gotPlan):
+		
+		for pose in plan:
+			
+			x = (pose.pose.position.x-origin.x)/resolution
+			y = (pose.pose.position.y-origin.y)/resolution
+			
+			if(data[int(y*width+x)] >= 99):
+				#stop the robot
+				#requestNewPlan = True
+		
 	
 	
 	#goal is of the type geometry_msgs.msg.PoseStamped
@@ -94,6 +109,8 @@ if __name__ == '__main__':
 	global localMap
 	global wayPointsTopic
 	global gotPlan
+	global plan
+	global indexes
 	
 	gotPan = false
 	
@@ -114,6 +131,12 @@ if __name__ == '__main__':
 
 	while not rospy.is_shutdown():
 		if(newGoal is True):
+			
+			if(getNewPlan):
+				
+			
+			
+			
 			lst.waitForTransform('map', 'base_footprint', rospy.Time(0), rospy.Duration(5.0))
 			#(trans, rot) = lst.lookupTransform('map', 'base_footprint', rospy.Time(0))
 			
@@ -142,24 +165,29 @@ if __name__ == '__main__':
 				newGoal = False
 				continue
 			
+			plan = path.plan.poses
 			gotPlan = True
 			
 			lastPose = path.plan.poses[0]
 			
-			for pose in path.plan.poses:
+			indexes = []
+			
+			for i in range(len(plan)):
 				#~ if(not inLocalMap(pose)):
 					#~ finalPlan.poses.append(lastPose)
 					#~ break
 				
-				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1): #if we change the dir
+				if(abs(yawFromQuatMsg(plan[i].pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1): #if we change the dir
 					#~ newPose = PoseStamped()
 					#~ newPose.pose.orientation = pose.pose.orientation
 					#~ newPose.pose.position = lastPose.pose.position
 					#~ finalPlan.poses.append(newPose)
-					if(pose.pose.position is lastPose.pose.position):
-						finalPlan.poses[-1].pose.orientation = pose.pose.orientation
+					if(plan[i].pose.position is lastPose.pose.position):
+						finalPlan.poses[-1].pose.orientation = plan[i].pose.orientation
 					else:
-						finalPlan.poses.append(pose)
+						finalPlan.poses.append(plan[i])
+						
+					indexes.append(i)
 				
 				lastPose = pose
 			
@@ -181,6 +209,7 @@ if __name__ == '__main__':
 				rospy.wait_for_service('nav2goal')
 				askMovement = rospy.ServiceProxy('nav2goal', GetPlan) #we are reusing the GetPlan srv msg to save time
 				ans = askMovement(startPose,pose,0.)
+				indexes.pop()
 			
 			newGoal = False
 			gotPlan = False
