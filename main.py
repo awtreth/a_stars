@@ -73,9 +73,9 @@ def pubWayPoints(path):
 
 	wayPointsTopic.publish(grid)
 
-def distance(first, second):
-	dx = first.pose.position.x - second.position.x
-	dy = first.pose.position.y - second.position.y
+def dist(first, second):
+	dx = first.pose.position.x - second.pose.position.x
+	dy = first.pose.position.y - second.pose.position.y
 	
 	return math.hypot(dx,dy)
 
@@ -136,7 +136,7 @@ if __name__ == '__main__':
 					#~ finalPlan.poses.append(lastPose)
 					#~ break
 				
-				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1) or dist(startPose, pose) > .5: #if we change the dir
+				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1) or dist(startPose, pose) > .5 or pose is path.plan.poses[-1]: #if we change the dir
 					#~ newPose = PoseStamped()
 					#~ newPose.pose.orientation = pose.pose.orientation
 					#~ newPose.pose.position = lastPose.pose.position
@@ -147,15 +147,16 @@ if __name__ == '__main__':
 						#finalPlan.poses.append(pose)
 					print "Got WayPoint"
 					finalPlan.poses.append(pose)
+					break
 				
 				lastPose = pose
+
+			#if len(finalPlan.poses) is 0:
+			#	finalPlan.poses.append(path.plan.poses[-1])
+			#elif finalPlan.poses[-1].pose.position is not path.plan.poses[-1].pose.position:
+			#	finalPlan.poses.append(path.plan.poses[-1])
 			
-			if len(finalPlan.poses) is 0:
-				finalPlan.poses.append(path.plan.poses[-1])
-			elif finalPlan.poses[-1].pose.position is not path.plan.poses[-1].pose.position:
-				finalPlan.poses.append(path.plan.poses[-1])
-			
-			finalPlan.poses[-1].pose.orientation = path.plan.poses[-1].pose.orientation
+			#finalPlan.poses[-1].pose.orientation = path.plan.poses[-1].pose.orientation
 			
 			pubWayPoints(finalPlan)
 			
@@ -169,7 +170,8 @@ if __name__ == '__main__':
 				askMovement = rospy.ServiceProxy('nav2goal', GetPlan) #we are reusing the GetPlan srv msg to save time
 				ans = askMovement(startPose,pose,0.)
 			
-			newGoal = False
+			if(finalPlan.poses[0] is path.plan.poses[-1]):
+				newGoal = False
 			
 			
 		
