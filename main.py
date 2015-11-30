@@ -12,10 +12,18 @@ def readNavGoal(msg):
 	goalPose = msg
 	newGoal = True
 
-def readLocalMap(msg):
+def readGlobalMap(msg):
 	global localMap
 	global br
+	global gotPlan
+	
 	localMap = msg
+	
+	if(gotPlan):
+		#check intersection with the plan
+		#if it has, stop the robot and request a new plan
+	
+	
 	
 	#goal is of the type geometry_msgs.msg.PoseStamped
 	quat = localMap.info.origin.orientation #quaternion 
@@ -85,6 +93,9 @@ if __name__ == '__main__':
 	global newGoal
 	global localMap
 	global wayPointsTopic
+	global gotPlan
+	
+	gotPan = false
 	
 	global br
 	global lst
@@ -96,7 +107,7 @@ if __name__ == '__main__':
 	wayPointsTopic = rospy.Publisher('/way_points', GridCells, queue_size=1)
 	
 	rospy.Subscriber('/globalGoal', PoseStamped, readNavGoal)
-	rospy.Subscriber('/move_base/local_costmap/costmap', OccupancyGrid, readLocalMap)
+	rospy.Subscriber('/move_base/global_costmap/costmap', OccupancyGrid, readGlobalMap)
 	
 	br = tf.TransformBroadcaster()
 	lst = tf.TransformListener()
@@ -120,6 +131,8 @@ if __name__ == '__main__':
 				path = getPath(startPose, goalPose,0.)
 			except rospy.ServiceException as exc:
 				print("Service did not process request: " + str(exc))
+				
+			
 			
 			print "got the plan"
 			finalPlan = Path()
@@ -129,6 +142,8 @@ if __name__ == '__main__':
 				newGoal = False
 				continue
 			
+			gotPlan = True
+			
 			lastPose = path.plan.poses[0]
 			
 			for pose in path.plan.poses:
@@ -136,17 +151,15 @@ if __name__ == '__main__':
 					#~ finalPlan.poses.append(lastPose)
 					#~ break
 				
-				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1) or dist(startPose, pose) > .5: #if we change the dir
+				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1): #if we change the dir
 					#~ newPose = PoseStamped()
 					#~ newPose.pose.orientation = pose.pose.orientation
 					#~ newPose.pose.position = lastPose.pose.position
 					#~ finalPlan.poses.append(newPose)
-					#if(pose.pose.position is lastPose.pose.position):
-						#finalPlan.poses[-1].pose.orientation = pose.pose.orientation
-					#else:
-						#finalPlan.poses.append(pose)
-					print "Got WayPoint"
-					finalPlan.poses.append(pose)
+					if(pose.pose.position is lastPose.pose.position):
+						finalPlan.poses[-1].pose.orientation = pose.pose.orientation
+					else:
+						finalPlan.poses.append(pose)
 				
 				lastPose = pose
 			
@@ -170,7 +183,7 @@ if __name__ == '__main__':
 				ans = askMovement(startPose,pose,0.)
 			
 			newGoal = False
-			
+			gotPlan = False
 			
 		
 		rospy.sleep(1)
