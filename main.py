@@ -73,6 +73,13 @@ def pubWayPoints(path):
 
 	wayPointsTopic.publish(grid)
 
+def distance(first, second):
+	dx = first.pose.position.x - second.position.x
+	dy = first.pose.position.y - second.position.y
+	
+	return math.hypot(dx,dy)
+
+
 if __name__ == '__main__':
 	global goalPose
 	global newGoal
@@ -96,7 +103,7 @@ if __name__ == '__main__':
 
 	while not rospy.is_shutdown():
 		if(newGoal is True):
-			lst.waitForTransform('map', 'base_footprint', rospy.Time(0), rospy.Duration(4.0))
+			lst.waitForTransform('map', 'base_footprint', rospy.Time(0), rospy.Duration(5.0))
 			#(trans, rot) = lst.lookupTransform('map', 'base_footprint', rospy.Time(0))
 			
 			startPose = PoseStamped()
@@ -128,16 +135,18 @@ if __name__ == '__main__':
 				#~ if(not inLocalMap(pose)):
 					#~ finalPlan.poses.append(lastPose)
 					#~ break
-					
-				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1): #if we change the dir
+				
+				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1) or dist(startPose, pose) > .5: #if we change the dir
 					#~ newPose = PoseStamped()
 					#~ newPose.pose.orientation = pose.pose.orientation
 					#~ newPose.pose.position = lastPose.pose.position
 					#~ finalPlan.poses.append(newPose)
-					if(pose.pose.position is lastPose.pose.position):
-						finalPlan.poses[-1].pose.orientation = pose.pose.orientation
-					else:
-						finalPlan.poses.append(pose)
+					#if(pose.pose.position is lastPose.pose.position):
+						#finalPlan.poses[-1].pose.orientation = pose.pose.orientation
+					#else:
+						#finalPlan.poses.append(pose)
+					print "Got WayPoint"
+					finalPlan.poses.append(pose)
 				
 				lastPose = pose
 			
