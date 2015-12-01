@@ -137,25 +137,30 @@ if __name__ == '__main__':
 			
 			lastPose = path.plan.poses[0]
 			
-			for i in range(len(plan)):
-				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1) or dist(startPose, pose) > .5 or pose is path.plan.poses[-1]: #if we change the dir
+			for pose in plan:
+				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1) or pose is path.plan.poses[-1]: #if we change the dir
 					print "Got WayPoint"
 					finalPlan.poses.append(pose)
-					break
+					#break
 				
 				lastPose = pose
 			
+			pubWayPoints(finalPlan)
+
 			#uncomment this if you are not running nav2goal
 			#newGoal = False
 			#continue
 			
 			#now we have the path
 			for pose in finalPlan.poses:
+				print len(finalPlan.poses)
 				rospy.wait_for_service('nav2goal')
 				askMovement = rospy.ServiceProxy('nav2goal', GetPlan) #we are reusing the GetPlan srv msg to save time
 				ans = askMovement(startPose,pose,0.)
+			newGoal = False
 
 			if(finalPlan.poses[0] is path.plan.poses[-1]):
+				print "reached the goal"
 				newGoal = False
 		
 		rospy.sleep(1)
