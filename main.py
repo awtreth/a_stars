@@ -33,34 +33,6 @@ def yawFromQuatMsg(quat):
 	q = [quat.x, quat.y, quat.z, quat.w]
 	return (tf.transformations.euler_from_quaternion(q))[2]
 
-def inLocalMap(globalPose):
-	global localMap
-	global lst
-	
-	#Create the goal frame, related to the map
-	#br.sendTransform(origin_position,origin_orientation,rospy.Time.now(), "local_map", "map")
-	
-	x = globalPose.pose.position.x
-	y = globalPose.pose.position.y
-	
-	globalPose.header.stamp = localMap.header.stamp
-	#startPose.header.frame_id = "base_footprint"
-	
-	transformedPose = lst.transformPose("local_map", globalPose)
-	
-	resolution = localMap.info.resolution
-	width = localMap.info.width
-	height = localMap.info.height
-
-	x = round(transformedPose.pose.position.x/resolution)
-	y = round(transformedPose.pose.position.y/resolution)
-	
-	print "x:"+repr(x)+" y:"+repr(y)
-	print "w:"+repr(width)+" h:"+repr(height)
-	
-	if(x<width and x>=0 and y<height and y>=0): return True
-	else: return False
-
 def pubWayPoints(path):
 	global wayPointsTopic
 	global localMap
@@ -86,7 +58,6 @@ if __name__ == '__main__':
 	global newGoal
 	global localMap
 	global wayPointsTopic
-	
 	
 	global br
 	global lst
@@ -138,14 +109,17 @@ if __name__ == '__main__':
 			lastPose = path.plan.poses[0]
 			
 			for pose in plan:
-				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1) or pose is path.plan.poses[-1]: #if we change the dir
+				#if we change the dir, if the distance is 50cm (for replanning) or its the goal
+				if(abs(yawFromQuatMsg(pose.pose.orientation)-yawFromQuatMsg(lastPose.pose.orientation)) > .1) or pose is path.plan.poses[-1]: #or dist(startPose, pose)>.5
 					print "Got WayPoint"
 					finalPlan.poses.append(pose)
 					#break
 				
 				lastPose = pose
 			
-			pubWayPoints(finalPlan)
+			
+			#pubWayPoints(finalPlan)
+			pubWayPoints(path.plan)
 
 			#uncomment this if you are not running nav2goal
 			#newGoal = False

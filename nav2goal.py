@@ -65,9 +65,9 @@ def navToPose(goal, tolerance):
 	turn1angle = from360to180(baseAngle + baseGoalAngle)
 	turn2angle = yawFromQuatMsg(goal.pose.orientation)
 	
-	
 	print "turn1angle = " + repr(math.degrees(turn1angle))
-	turnTo(turn1angle, math.radians(5))
+	if(dist > .1):
+		turnTo(turn1angle, math.radians(5))
 	moveTo(goal.pose.position.x, goal.pose.position.y, tolerance)
 	print "turn2angle = " + repr(math.degrees(turn2angle))
 	turnTo(turn2angle, math.radians(5))
@@ -136,7 +136,7 @@ def moveTo(x,y, tolerance):
 	#Create the goal frame, related to the map
 	br.sendTransform((x,y,0),(0,0,0,1),moveToTime, "move_to", "map")
 	
-	kp_w = 0
+	kp_w = .3
 	max_w = .3
 	kp_vel = .4
 	max_vel = .4

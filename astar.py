@@ -136,8 +136,13 @@ class NavMap(object):
 				if(turn_cost > Direction.N_DIRECTIONS/2): turn_cost = Direction.N_DIRECTIONS-turn_cost
 				abs(pointDiff.x) + abs(pointDiff.y) #+ turn_cost #abs(dx)+abs(dy) is for 90 
 				
-				child.h_n = abs(pointDiff.x) + abs(pointDiff.y) #+ turn_cost #abs(dx)+abs(dy) is for 90 
-				child.g_n = parent.g_n+1
+				child.h_n = abs(pointDiff.x) + abs(pointDiff.y) #+ turn_cost #abs(dx)+abs(dy) is for 90  #counts the moveForward with cost 1
+				
+				#The cost functions makes a trade-off between turn movements (slow) and the cost (as higher as you get close to obstacles)
+				if(child.pos.dir is not parent.pos.dir): #turn movement
+					child.g_n = parent.g_n + 5 # avoid turns (5 is an intermediate cost for moveForward)
+				else: #move ForwardMovement
+					child.g_n = parent.g_n + 1 + self.getCost(child.pos.x, child.pos.y)/10 # around 0 to 10
 				
 				children.append(child)
 		
@@ -263,9 +268,22 @@ class Node(object):
 			return self
 
 #CostMap read callBack Function
-def readMap(msg):
+def readGlobalMap(msg):
 	global rosmap
 	rosmap = msg
+
+def readLocalMap(msg):
+	global localMap
+	localMap = msg
+
+def mergeMaps(localmap, globalmap):
+	rosmap = OccupancyGrid()
+	
+	min_global_x = localmap.info.origin.position.x-globalmap.info.origin.position.x
+	min_global_y = localmap.info.origin.position.y-globalmap.info.origin.position.y
+	max_global_x = min_global_x+localmap.info.width
+	max_global_y = min_global_y+localmap.info.height
+
 
 #Service callBack Function
 def planCallBack(msg):
@@ -352,7 +370,7 @@ if __name__ == '__main__':
 	rospy.init_node('astar')
 	
 	#rospy.Subscriber("/map", OccupancyGrid, readMap)
-	rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, readMap)
+	rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, readGlobalMap)
 
 	frontierPub = rospy.Publisher("/grid_Frontier", GridCells, queue_size=1)
 	exploredPub = rospy.Publisher("/grid_Explored", GridCells, queue_size=1)

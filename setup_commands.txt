@@ -9,4 +9,7 @@ export ROS_MASTER_URI=http://192.168.1.101:11311       # Set for real robot
 export TURTLEBOT_STAGE_WORLD_FILE=~/git/a_stars/stagemaps/simple_map.world
 export TURTLEBOT_STAGE_MAP_FILE=~/git/a_stars/stagemaps/simple_map.yaml
 
+export TURTLEBOT_STAGE_WORLD_FILE=~/git/a_stars/stagemaps/AK220Map.world
+export TURTLEBOT_STAGE_MAP_FILE=~/git/a_stars/stagemaps/AK220Map.yaml
+
 
