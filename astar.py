@@ -29,7 +29,7 @@ Direction = enum(WEST=0, NORTH=1, EAST=2, SOUTH=3, N_DIRECTIONS=4) #90degree tur
 
 #Helper class
 #It represents a 2D oriented Point, or pose
-class Pose(object): #FIXME: actually, it is a Pose (point + orientation)
+class Pose(object):
 	
 	#constructor
 	def __init__(self, x = 0, y = 0, orientation = 0):
@@ -88,8 +88,6 @@ class NavMap(object):
 		goalDir = abs(round((angle-math.pi)/(2.*math.pi/Direction.N_DIRECTIONS)))%Direction.N_DIRECTIONS#convert to Direction
 		
 		#CONVERSION FROM METERS TO GRID POSITION IN RELATION TO THE MAP
-		#OBS: consider that costmap is aligned in ang=0) FIXME
-		
 		#goalPose
 		x = round((goalPose.pose.position.x-self.origin.position.x)/self.resolution)
 		y = round((goalPose.pose.position.y-self.origin.position.y)/self.resolution)
@@ -108,7 +106,7 @@ class NavMap(object):
 			if(ocmap.data[i]>=threshold):
 				self.states[i] = CellState.BLOCKED #set the obstacles
 			else:
-				self.states[i] = CellState.FREE
+				self.states[i] = CellState.FREE #unknown places (-1) are also marked as FREE
 
 	#return the expanded nodes from the node parent
 	def expand(self, parent): #parent is a node
@@ -132,10 +130,12 @@ class NavMap(object):
 				self.setGridState(child.pos.x, child.pos.y, CellState.FRONTIER)
 				
 				pointDiff = self.goalPose.minus(child.pos) #get the difference from the goal
+				
+				#turn heuristic cost
 				turn_cost = abs(child.pos.dir-self.goalPose.dir)
 				if(turn_cost > Direction.N_DIRECTIONS/2): turn_cost = Direction.N_DIRECTIONS-turn_cost
-				abs(pointDiff.x) + abs(pointDiff.y) #+ turn_cost #abs(dx)+abs(dy) is for 90 
 				
+				#compute the heuristic
 				child.h_n = abs(pointDiff.x) + abs(pointDiff.y) #+ turn_cost #abs(dx)+abs(dy) is for 90  #counts the moveForward with cost 1
 				
 				#The cost functions makes a trade-off between turn movements (slow) and the cost (as higher as you get close to obstacles)
@@ -209,7 +209,8 @@ class NavMap(object):
 					grid.cells.append(point)
 		
 		return grid
-		
+	
+	#Convert a node (in nCells and Direction) to a Pose(in meters and degrees)
 	def nodeToPose(self, node):
 		pose = PoseStamped()
 		pose.header.frame_id = "map"
@@ -276,13 +277,13 @@ def readLocalMap(msg):
 	global localMap
 	localMap = msg
 
-def mergeMaps(localmap, globalmap):
-	rosmap = OccupancyGrid()
-	
-	min_global_x = localmap.info.origin.position.x-globalmap.info.origin.position.x
-	min_global_y = localmap.info.origin.position.y-globalmap.info.origin.position.y
-	max_global_x = min_global_x+localmap.info.width
-	max_global_y = min_global_y+localmap.info.height
+#def mergeMaps(localmap, globalmap):
+#	rosmap = OccupancyGrid()
+#	
+#	min_global_x = localmap.info.origin.position.x-globalmap.info.origin.position.x
+#	min_global_y = localmap.info.origin.position.y-globalmap.info.origin.position.y
+#	max_global_x = min_global_x+localmap.info.width
+#	max_global_y = min_global_y+localmap.info.height
 
 
 #Service callBack Function
@@ -306,31 +307,23 @@ def planCallBack(msg):
 	pq = PriorityQueue()
 	currentNode = origin
 	
+	# Compute the AStar search algorithm
 	while not currentNode.pos.equals(navMap.goalPose) and not rospy.is_shutdown():
 		children = navMap.expand(currentNode)
 		
 		for node in children:
-			#print "put " + node.pos.asString()
 			pq.put((node.cost(), node)) #it is ranked by the cost
 		
-		if(pq.qsize() == 0):
+		if(pq.qsize() == 0): #no more nodes to be expanded
 			print "didn't find a path"
 			frontierPub.publish(navMap.getGridCell(CellState.FRONTIER))
-			return Path()
+			return Path() #return an empty Path
 		
 		# pop the "closest" node to the goal
 		currentNode = pq.get()[1]
-		#print currentNode.g_n
-		#print currentNode.h_n
-		#print currentNode.cost()
-	
-		#print currentNode.pos.asString()
-		#raw_input("");
+
 		# Publish the data in Rviz environment	
 		#frontierPub.publish(navMap.getGridCell(CellState.FRONTIER))
-		#exploredPub.publish(navMap.getGridCell(CellState.EXPLORED))
-		#freePub.publish(navMap.getGridCell(CellState.FREE))
-		#blockedPub.publish(navMap.getGridCell(CellState.BLOCKED))
 	
 	# Publish the data in Rviz environment	
 	frontierPub.publish(navMap.getGridCell(CellState.FRONTIER))
@@ -341,9 +334,6 @@ def planCallBack(msg):
 	#Get the path
 	path = Path()
 	path.header.frame_id = "map"
-	#path.poses.append(msg.goal)
-	#path.poses.append(nodeToPose(currentNode, navMap.resolution))
-	#print "("+repr(currentNode.pos.x)+", "+repr(currentNode.pos.y) + ", " + repr(currentNode.pos.dir) + ')'
 	
 	# Since we store the parent node inside each node and the startNode has null parent
 	# We can iterate through it as a LinkedList
