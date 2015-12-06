@@ -37,6 +37,8 @@ class CustomMap(object):
 		for i in range(0,len(self.mmap)):
 			if globalMap.data[i] >= threshold:
 				self.mmap[i] = self.OBSTACLE #set the obstacles
+			elif globalMap.data[i] < 0:
+				self.mmap[i] = self.UNKNOWN
 			else:
 				self.mmap[i] = self.FREE
 		
@@ -69,26 +71,20 @@ class CustomMap(object):
 	#Return the frontier (list of Points)
 	def getFrontier(self):
 		frontier = []
+		offsets = ((-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1))
 
 		for y in range(self.height):
 			for x in range(self.width):
 				if(self.get(x,y) == self.UNKNOWN):
-					frontier.append(self.getFreeNeighborPoints(x,y))
+					#create a helper function
+					for offset in offsets:
+						xx = x+offset[0]
+						yy = y+offset[1]
+						if(self.inBounds(xx,yy)):
+							if self.get(xx, yy) is self.FREE:
+								frontier.append(Point2D(xx,yy))
 
 		return frontier
-		
-	#helper function
-	def getFreeNeighborPoints(self, x, y):
-		points = []
-		offsets = ((-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1))
-		
-		for offset in offsets:
-			xx = x+offset[0]
-			yy = y+offset[1]
-			if self.get(xx, yy) is self.FREE:
-				points.append(Point2D(xx,yy))
-		
-		return points
 	
 	def setupPubTopics(self):
 		self.unknownPub = rospy.Publisher("/unknown_area", GridCells, queue_size=1)
@@ -127,13 +123,22 @@ class FrontierProcessor(object):
 		self.setupPubTopics()
 
 	def computeCentroid(self, frontier):
-		pass
+		sumx = 0
+		sumy = 0
+		
+		for point in frontier:
+			sumx += point.x
+			sumy += point.y
+		
+		return Point2D(sumx/len(frontier), sumy/len(frontier))
 
 	def publishFrontier(self, frontier, resolution, origin):
 		self.frontierPub.publish(self.toGridCells(frontier,resolution, origin))
 
-	def publishCentroid(self, centroid):
-		pass
+	def publishCentroid(self, centroid,resolution,origin):
+		centroidd = []
+		centroidd.append(centroid)
+		self.centroidPub.publish(self.toGridCells(centroidd,resolution,origin)) 
 
 	def toGridCells(self, frontier, resolution, origin):
 		grid = GridCells()
@@ -152,6 +157,7 @@ class FrontierProcessor(object):
 
 	def setupPubTopics(self):
 		self.frontierPub = rospy.Publisher("/map_frontier", GridCells, queue_size=1)
+		self.centroidPub = rospy.Publisher("/centroid", GridCells, queue_size=1)
 
 
 
@@ -192,7 +198,10 @@ if __name__ == '__main__':
 	mmap = CustomMap(globalMap, localMap)    
 	mmap.publishMap()
 
-	frontierProcessor.publishFrontier(mmap.getFrontier(),mmap.resolution,mmap.origin)
+	frontier = mmap.getFrontier()
+
+	frontierProcessor.publishFrontier(frontier,mmap.resolution,mmap.origin)
+	frontierProcessor.publishCentroid(frontierProcessor.computeCentroid(frontier), mmap.resolution, mmap.origin)
 
 	rospy.spin()
 
