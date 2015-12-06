@@ -28,26 +28,18 @@ class CustomMap(object):
 
 		self.width = globalMap.info.width
 		self.height = globalMap.info.height
-		self.mmap = [[self.UNKNOWN]*self.width]*self.height
+		self.mmap = [self.UNKNOWN]*len(globalMap.data)
 		#it assumes that the orientation of the globalCostMap doesn't change
 		self.origin = Point2D(globalMap.info.origin.position.x, globalMap.info.origin.position.y)
 		self.resolution = globalMap.info.resolution
 
 	#create the state table
-		for y in range(0,self.height):
-			offset = y*self.width
-			for x in range(0,self.width):
-				idx = y*self.width+x
-				if globalMap.data[idx] >= threshold:
-					#print "obstacle " + repr(x) + ' ' + repr(y)
-					self.set(x,y,self.OBSTACLE) #set the obstacles
-				else:
-					#print "free " + repr(x) + ' ' + repr(y)
-					self.set(x,y,self.FREE)
-				#if (idx%100 is 0):
-				#	raw_input('press Enter')
+		for i in range(0,len(self.mmap)):
+			if globalMap.data[i] >= threshold:
+				self.mmap[i] = self.OBSTACLE #set the obstacles
+			else:
+				self.mmap[i] = self.FREE
 		
-		#print self.mmap
 		self.update(localMap)
 
 	# Update the map based on a new localMap
@@ -58,14 +50,14 @@ class CustomMap(object):
 	#Get the state of the specified position
 	def get(self,x,y):
 		if self.inBounds(x,y):
-			return self.mmap[y][x]
+			return self.mmap[int(y*self.width+x)]
 		else:
 			print "Not inBounds in CustomMap::get method" #TODO: throw exception
 
 	#Set the state of the specified position
 	def set(self,x,y, value):
 		if self.inBounds(x,y):
-			self.mmap[y][x] = value #TODO: check if value is valid
+			self.mmap[int(y*self.width+x)] = value #TODO: check if value is valid
 		else:
 			print "Not inBounds in CustomMap::set method" #TODO: throw exception
     
@@ -106,18 +98,7 @@ class CustomMap(object):
 	def publishMap(self):
 		self.unknownPub.publish(self.getGridCell(self.UNKNOWN))
 		self.freePub.publish(self.getGridCell(self.FREE))
-		self.obstaclePub.publish(self.getGridCell(self.OBSTACLE))
-	
-	
-	def printMap(self):
-		for y in range(self.height):
-			line = []
-			for x in range(self.width):
-				line.append(self.get(x,y))
-			
-			print line
-	
-	
+		self.obstaclePub.publish(self.getGridCell(self.OBSTACLE))	
 	
 	# Return the GridCells ROS msg of the cells with state "value"
 	def getGridCell(self, value):
@@ -148,14 +129,29 @@ class FrontierProcessor(object):
 	def computeCentroid(self, frontier):
 		pass
 
-	def publishFrontier(self, frontier):
-		pass
+	def publishFrontier(self, frontier, resolution, origin):
+		self.frontierPub.publish(self.toGridCells(frontier,resolution, origin))
 
 	def publishCentroid(self, centroid):
 		pass
 
+	def toGridCells(self, frontier, resolution, origin):
+		grid = GridCells()
+		grid.header.frame_id = "map"
+		grid.cell_width = resolution
+		grid.cell_height = resolution
+		
+		for pt in frontier:
+			point = Point()
+			point.x = pt.x*resolution+origin.x
+			point.y = pt.y*resolution+origin.y
+			point.z = 0
+			grid.cells.append(point)
+		
+		return grid
+
 	def setupPubTopics(self):
-		pass
+		self.frontierPub = rospy.Publisher("/map_frontier", GridCells, queue_size=1)
 
 
 
@@ -190,13 +186,14 @@ if __name__ == '__main__':
 
 
 	rospy.sleep(1)
+	
+	frontierProcessor = FrontierProcessor()
 
 	mmap = CustomMap(globalMap, localMap)    
-	
-	
-	while True:
-		mmap.publishMap()
-		rospy.sleep(1)
+	mmap.publishMap()
+
+	frontierProcessor.publishFrontier(mmap.getFrontier(),mmap.resolution,mmap.origin)
+
 	rospy.spin()
 
 
