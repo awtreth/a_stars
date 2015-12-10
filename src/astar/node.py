@@ -47,6 +47,14 @@ class Node(object):
 			print "not defined behavior in moveForward for " + repr(Direction.N_DIRECTIONS) + "directions"
 			return self
 
+	def expandAll(self):
+		all_children = []
+		
+		all_children.append(parent.moveForward())
+		all_children.append(parent.turnLeft())
+		all_children.append(parent.turnRight())
+		
+		return all_children
 
 	#Convert a node (in nCells and Direction) to a Pose(in meters and degrees)
 	def toPose(self, resolution, origin):
