@@ -122,8 +122,8 @@ if __name__ == '__main__':
 			pubWayPoints(path.plan)
 
 			#uncomment this if you are not running nav2goal
-			#newGoal = False
-			#continue
+			newGoal = False
+			continue
 			
 			#now we have the path
 			for pose in finalPlan.poses:
