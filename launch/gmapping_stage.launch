@@ -83,5 +83,5 @@
   </include -->
 
   <!--  **************** Visualisation ****************  -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_stage)/rviz/robot_navigation.rviz"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find a_stars)/rviz/exploration.rviz"/>
 </launch>
