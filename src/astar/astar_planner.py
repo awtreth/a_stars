@@ -46,9 +46,9 @@ class AStarPlanner(object):
 	def gCost(self, node):
 		#The cost functions makes a trade-off between turn movements (slow) and the cost (as higher as you get close to obstacles)
 		if(node.pos.dir is not node.parent.pos.dir): #turn movement
-			return node.parent.g_n + 5 # avoid turns (5 is an intermediate cost for moveForward)
+			return node.parent.g_n + 3 # avoid turns (5 is an intermediate cost for moveForward)
 		else: #move ForwardMovement
-			return node.parent.g_n + 1 + self.map.getCost(node.pos.x, node.pos.y)/10 # around 0 to 10
+			return node.parent.g_n + 1 + self.map.getCost(node.pos.x, node.pos.y)/20 # around 0 to 10
 	
 	
 	def expandNode(self, node):
@@ -61,8 +61,8 @@ class AStarPlanner(object):
 				self.map.markPose(child.pos)
 				self.map.setGridState(child.pos.x, child.pos.y, CellState.FRONTIER)
 				
-				child.g_n = gCost(child)
-				child.h_n = heuristic(child)
+				child.g_n = self.gCost(child)
+				child.h_n = self.heuristic(child)
 				
 				children.append(child)
 		
@@ -72,17 +72,15 @@ class AStarPlanner(object):
 	
 	def run(self):
 		# Create the first node
-		origin = Node(self.map.startPose)
+		origin = Node(self.startPose)
 		
 		#PriorityQueue of nodes
 		pq = PriorityQueue()
 		currentNode = origin
 		
-		self.path = Path() #empty Path
-		
 		# Compute the AStar search algorithm
-		while not currentNode.pos.equals(self.map.goalPose) and not rospy.is_shutdown():
-			children = self.expand(currentNode)
+		while not currentNode.pos.equals(self.goalPose) and not rospy.is_shutdown():
+			children = self.expandNode(currentNode)
 			
 			for node in children:
 				pq.put((node.cost(), node)) #it is ranked by the cost
@@ -95,27 +93,14 @@ class AStarPlanner(object):
 			# pop the "closest" node to the goal
 			currentNode = pq.get()[1]
 		
-		#create path
-		path.header.frame_id = "map"
-		
-		# Since we store the parent node inside each node and the startNode has null parent
-		# We can iterate through it as a LinkedList
-		while currentNode.parent is not 0 and not rospy.is_shutdown():
-			path.poses.append(currentNode.toPose(navMap.resolution, navMap.origin))
-			currentNode = currentNode.parent #go to the next node
+		self.calcPathWayPoints(currentNode) #lastNode
 	
-		#del path.poses[-1] #take the startPoint off
-		
-		path.poses = list(reversed(path.poses))
-		
-		return path
-	
-	def calcPathWayPoints(self, lastNode):
+	def calcPathWayPoints(self, node):
 		#create path
 		self.path = Path() #empty Path
 		self.wayPoints = Path() #empty Path
 		self.path.header.frame_id = "map"
-		self.wayPoints.frame_id = "map"
+		self.wayPoints.header.frame_id = "map"
 		
 		# Since we store the parent node inside each node and the startNode has null parent
 		# We can iterate through it as a LinkedList
@@ -130,11 +115,11 @@ class AStarPlanner(object):
 		self.path.poses.reverse()
 		self.wayPoints.poses.reverse()
 		
-		def getPathGridCells(self):
-			return pathToGridCells(self.path, self.map.resolution)
-		
-		def getWayPointsGridCells(self):
-			return pathToGridCells(self.wayPoints, self.map.resolution)
+	def getPathGridCells(self):
+		return pathToGridCells(self.path, self.map.resolution)
+	
+	def getWayPointsGridCells(self):
+		return pathToGridCells(self.wayPoints, self.map.resolution)
 	
 
 def pathToGridCells(path, resolution):
@@ -144,6 +129,6 @@ def pathToGridCells(path, resolution):
 	grid.cell_height = resolution
 	
 	for pose in path.poses:
-		grid.cells.append(pose.position)
+		grid.cells.append(pose.pose.position)
 		
 	return grid

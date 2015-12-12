@@ -50,9 +50,9 @@ class Node(object):
 	def expandAll(self):
 		all_children = []
 		
-		all_children.append(parent.moveForward())
-		all_children.append(parent.turnLeft())
-		all_children.append(parent.turnRight())
+		all_children.append(self.moveForward())
+		all_children.append(self.turnLeft())
+		all_children.append(self.turnRight())
 		
 		return all_children
 
