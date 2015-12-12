@@ -33,16 +33,27 @@ class Node(object):
 		pos = Pose2D(self.pos.x, self.pos.y, (self.pos.dir+1)%Direction.N_DIRECTIONS)
 		return Node(pos, self)
 		
-	def moveForward(self): #TODO: warning: this is valid just for 90degrees turn
-		if(Direction.N_DIRECTIONS is 4):
+	def moveForward(self, nDirs = Direction.N_DIRECTIONS): #TODO: warning: this is valid just for 90degrees turn
+		if(nDirs is 4):
 			if(int(self.pos.dir%2) is 0): #even(west or east)
-				#print "even"
 				pos = Pose2D(self.pos.x+(self.pos.dir-1),self.pos.y, self.pos.dir)
 				return Node(pos,self)
 			else: #odd number
-				#print "odd"
 				pos = Pose2D(self.pos.x,self.pos.y-(self.pos.dir-2), self.pos.dir)
 				return Node(pos,self)
+		elif(nDirs is 8):
+			pos = Pose2D(self.pos.x,self.pos.y, self.pos.dir)
+			
+			if pos.dir in (Direction.WEST,Direction.NORTHWEST,Direction.SOUTHWEST):
+				pos.x-=1
+			elif pos.dir in (Direction.EAST, Direction.NORTHEAST, Direction.SOUTHEAST):
+				pos.x+=1
+			if pos.dir in (Direction.NORTHWEST, Direction.NORTH, Direction.NORTHEAST):
+				pos.y+=1
+			elif pos.dir in (Direction.SOUTHWEST, Direction.SOUTH, Direction.SOUTHEAST):
+				pos.y-=1
+			
+			return Node(pos,self)
 		else:
 			print "not defined behavior in moveForward for " + repr(Direction.N_DIRECTIONS) + "directions"
 			return self

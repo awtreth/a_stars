@@ -40,7 +40,8 @@ class AStarPlanner(object):
 		turn_cost = abs(node.pos.dir-self.goalPose.dir)
 		if(turn_cost > Direction.N_DIRECTIONS/2): turn_cost = Direction.N_DIRECTIONS-turn_cost
 		
-		return abs(pointDiff.x) + abs(pointDiff.y) #+ turn_cost #abs(dx)+abs(dy) is for 90  #counts the moveForward with cost 1
+		return math.hypot(pointDiff.x, pointDiff.y)
+		#return abs(pointDiff.x) + abs(pointDiff.y) #+ turn_cost #abs(dx)+abs(dy) is for 90  #counts the moveForward with cost 1
 	
 	#calculate the g_n cost of the specified node
 	def gCost(self, node):

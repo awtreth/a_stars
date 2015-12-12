@@ -9,8 +9,8 @@ def enum(**enums):
 
 
 #Orientation
-Direction = enum(WEST=0, NORTH=1, EAST=2, SOUTH=3, N_DIRECTIONS=4) #90degree turn (starting with WEST)
-#Direction = enum(WEST=0, NORTHWEST=1, NORTH=2, NORTHEAST=3, EAST=4, SOUTHEAST=5, SOUTH=6, SOUTHWEST=7, N_DIRECTIONS=8) #90degree turn (starting with WEST)
+#Direction = enum(WEST=0, NORTH=1, EAST=2, SOUTH=3, N_DIRECTIONS=4) #90degree turn (starting with WEST)
+Direction = enum(WEST=0, NORTHWEST=1, NORTH=2, NORTHEAST=3, EAST=4, SOUTHEAST=5, SOUTH=6, SOUTHWEST=7, N_DIRECTIONS=8) #45degree turn (starting with WEST)
 #Direction = enum(NORTHWEST=0, NORTH=1, NORTHEAST=2, EAST=3, SOUTHEAST=4, SOUTH=5, SOUTHWEST=6, WEST=7, N_DIRECTIONS=8) #90degree turn (starting with NORTHWEST)
 
 #Helper class
