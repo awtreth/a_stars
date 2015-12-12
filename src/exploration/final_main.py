@@ -25,8 +25,8 @@ if __name__ == '__main__':
 	
 	while(True and not rospy.is_shutdown()):
 
-		if(rosInput.newGlobalMap == True):
-			mmap = ExplorationMap(rosInput.getGlobalMap(), rosInput.getLocalMap())    
+		if(rosInput.newMap == True):
+			mmap = ExplorationMap(rosInput.getMap())    
 			#print "received"
 
 			frontier = mmap.getFrontier()

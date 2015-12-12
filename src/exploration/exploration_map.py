@@ -9,7 +9,7 @@ class ExplorationMap(object):
 	OBSTACLE = 1
 	
 	#Default Constructor
-	def __init__(self, globalMap, localMap, threshold = 90):
+	def __init__(self, globalMap, threshold = 90):
 		
 		self.width = globalMap.info.width
 		self.height = globalMap.info.height
@@ -31,11 +31,6 @@ class ExplorationMap(object):
 
 	def cells(self):
 		return self.mmap
-
-	# Update the map based on a new localMap
-	# Keep the globalMap as it was before
-	def update(self, localMap):
-		pass
 
 	#Get the state of the specified position
 	def get(self,x,y):
