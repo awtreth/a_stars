@@ -27,7 +27,6 @@ class ExplorationMap(object):
 			else:
 				self.mmap[i] = self.FREE
 		
-		self.update(localMap)
 
 	def cells(self):
 		return self.mmap

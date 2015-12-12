@@ -1,6 +1,7 @@
+import tf
 from math import hypot
 from nav_msgs.msg import GridCells
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, PoseStamped, Quaternion
 
 #Represents a simple 2D point to compute the frontier
 class Point2D(object):
@@ -29,3 +30,17 @@ class Point2D(object):
 		
 		return grid
 
+	#angle: euler angle in radians
+	def toPoseStamped(self, resolution, origin, angle = 0):
+		pose = PoseStamped()
+		pose.header.frame_id = "map"
+		
+		pose.pose.position = self.toRosPoint(resolution, origin)
+		quatmsg = Quaternion
+		(x,y,z,w) = tf.transformations.quaternion_from_euler(0,0,angle)
+		pose.pose.orientation.x = x
+		pose.pose.orientation.y = y
+		pose.pose.orientation.z = z
+		pose.pose.orientation.w = w
+		
+		return pose
