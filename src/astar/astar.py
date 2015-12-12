@@ -34,9 +34,6 @@ def planCallBack(msg):
 	
 	print "received request"
 	
-	navMap = AStarMap(rosmap)
-	print "created map"
-	
 	planner = AStarPlanner(AStarMap(rosmap), msg.start, msg.goal)
 	
 	pubGridCells(planner)
