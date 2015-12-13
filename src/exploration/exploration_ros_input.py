@@ -2,7 +2,7 @@ import rospy, tf
 from nav_msgs.msg import OccupancyGrid
 from actionlib_msgs.msg import GoalStatusArray 
 from geometry_msgs.msg import PoseStamped 
-
+from map_msgs.msg import OccupancyGridUpdate
 
 class ExplorationRosInput(object):
 	
@@ -11,16 +11,33 @@ class ExplorationRosInput(object):
 		
 	def setup(self):
 		rospy.Subscriber('/move_base/status', GoalStatusArray, self.readStatus)
+		rospy.Subscriber('/move_base/global_costmap/costmap', OccupancyGrid, self.readGlobalCostMap)
+		rospy.Subscriber('/move_base/global_costmap/costmap_updates', OccupancyGridUpdate, self.readGlobalCostMapUpdates)
 		rospy.Subscriber('/map', OccupancyGrid, self.readMap)
 		self.lst = tf.TransformListener()
 		self.status = 1
 		self.newMap = False
 		self.newStatus = False
-		
+	
+	def readGlobalCostMap(self, rosmap):
+		print "got map"
+		self.globalMap = rosmap
+	
+	def readGlobalCostMapUpdates(self, rosmap):
+		print "updated map"
+		self.updateMap = rosmap
+	
 	def getMap(self):
 		self.newMap = False
 		return self.map
-		
+		#return self.globalmap
+	
+	def getUpdateMap(self):
+		return self.updateMap
+	
+	def getGlobalMap(self):
+		return self.globalMap
+	
 	def getStatus(self):
 		self.newStatus = False
 		return self.status
@@ -38,8 +55,9 @@ class ExplorationRosInput(object):
 	
 	#Callback function that gets robot Status
 	def readStatus(self,rosStatus):
-		self.status = rosStatus.status_list[-1].status
-		self.newStatus = True
+		if(len(rosStatus.status_list)>0):
+			self.status = rosStatus.status_list[-1].status
+			self.newStatus = True
 	
 	#Callback function that gets the globalCostMap
 	def readMap(self,rosmap):

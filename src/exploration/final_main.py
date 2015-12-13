@@ -53,8 +53,8 @@ if __name__ == '__main__':
 	
 	while(not rospy.is_shutdown()):
 
-		mmap = ExplorationMap(rosInput.getMap())    
-		#print "received"
+		mmap = ExplorationMap(rosInput.getGlobalMap(), rosInput.getUpdateMap())    
+		print "received"
 		frontier = mmap.getFrontier()
 		centroid = frontier.centroid() #maybe we will not need this
 		
