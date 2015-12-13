@@ -7,6 +7,7 @@ class ExplorationMap(object):
 	FREE = 0
 	UNKNOWN = 2
 	OBSTACLE = 1
+	FREE_MARKED = 3
 	
 	#Default Constructor
 	def __init__(self, globalMap, threshold = 90):
@@ -51,7 +52,7 @@ class ExplorationMap(object):
 		else: return False
 
 	#Return the frontier
-	def getFrontier(self):
+	def getFrontierOld(self):  #now old
 		
 		frontier = Frontier()
 		
@@ -74,6 +75,59 @@ class ExplorationMap(object):
 					neighboors.append(Point2D(xx,yy))
 		
 		return neighboors
+		
+		
+	#width first search
+	
+	class OrderedSetQueue(Queue.Queue):
+	def _init(self, maxsize):
+		self.queue = OrderedSet()
+	def _put(self, item):
+		self.queue.add(item)
+	def _get(self):
+		return self.queue.pop()
+
+
+#helper for getFrontier
+	def frontExpand(self, x , y):
+		neighboors = []
+		offsets = ((-1,0),(0,-1),(0,1),(1,0))
+		
+		self.set(x , y , self.FREE_MARKED)
+		
+		for offset in offsets:
+			xx = x+offset[0]
+			yy = y+offset[1]
+			if(self.inBounds(xx,yy)):
+				if self.get(xx, yy) is self.UNKOWN:
+					return Point2d(x,y)
+					
+				if self.get(xx, yy) is self.FREE:
+					neighboors.append(Point2D(xx,yy))
+		
+		return neighboors
+	
+	#Takes the x y of robot returns point2d of nearest frontier
+	def getFrontier(self, x , y)
+		startPoint = Point2(x,y)
+		que = OrderedSetQueue(1000)
+		que.put(startPoint)
+		while not rospy.is_shutdown():
+			
+			fromQue = que.get()
+			
+			expanded = frontExpand(fromQue.x , fromQue.y)
+			
+			if self.get(expanded.x , expanded.y) is self.UNKNOWN
+				return expanded
+				
+			else:
+				for point in expanded:
+					que.put(point)
+				
+			
+			
+			
 	
 	# Return the GridCells ROS msg of the cells with state "value"
 	def getGridCell(self, value):
