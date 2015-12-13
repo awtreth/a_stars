@@ -8,6 +8,8 @@ from nav_msgs.msg import OccupancyGrid, GridCells, Path
 from Queue import PriorityQueue
 from geometry_msgs.msg import PoseStamped, Point , PoseWithCovarianceStamped, Pose, Quaternion
 from nav_msgs.srv import GetPlan
+from map_msgs.msg import OccupancyGridUpdate
+
 
 from pose2d import *
 from astar_map import *
@@ -18,14 +20,17 @@ from astar_planner import *
 def readGlobalMap(msg):
 	global rosmap
 	rosmap = msg
+	#~ print "got global"
 
-def readLocalMap(msg):
-	global localMap
-	localMap = msg
+def readUpdateMap(msg):
+	global updateMap
+	#~ print "got update"
+	updateMap = msg
 	
 #Service callBack Function
 def planCallBack(msg):
 	global rosmap
+	global updateMap
 	#~ global frontierPub
 	#~ global exploredPub
 	#~ global freePub
@@ -34,7 +39,7 @@ def planCallBack(msg):
 	
 	print "received request"
 	
-	planner = AStarPlanner(AStarMap(rosmap), msg.start, msg.goal)
+	planner = AStarPlanner(AStarMap(rosmap,updateMap), msg.start, msg.goal)
 	
 	pubGridCells(planner)
 	
@@ -47,6 +52,8 @@ def pubGridCells(planner):
 	global blockedPub
 	global wayPointsPub
 	global pathPub
+	
+	print "pub"
 	
 	blockedPub.publish(planner.map.getGridCell(CellState.BLOCKED))
 	freePub.publish(planner.map.getGridCell(CellState.FREE))
@@ -71,6 +78,7 @@ if __name__ == '__main__':
 	
 	#rospy.Subscriber("/map", OccupancyGrid, readMap)
 	rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, readGlobalMap)
+	rospy.Subscriber("/move_base/global_costmap/costmap_updates", OccupancyGridUpdate, readUpdateMap)
 
 	frontierPub = rospy.Publisher("/AStarFrontier", GridCells, queue_size=1)
 	exploredPub = rospy.Publisher("/AStarExplored", GridCells, queue_size=1)

@@ -15,23 +15,30 @@ CellState = enum(FREE=0, FRONTIER=1, EXPLORED=2, BLOCKED=3)
 #keep tracks of the state of each cell in the map
 class AStarMap(object):
 	
-	def __init__(self, ocmap, threshold = 99): #ocmap = OccupancyGrid (costmap)
+	def __init__(self, ocmap, updateMap, threshold = 99): #ocmap = OccupancyGrid (costmap)
 		self.resolution = ocmap.info.resolution
 		self.width = ocmap.info.width #just to make it easier to see
 		self.height = ocmap.info.height
 		self.origin = ocmap.info.origin #Pose (of ROS)
+		self.threshold = threshold
 		
 		#where we store the state of the cells
 		self.states = [CellState.FREE]*len(ocmap.data) #at first we all with FREE value
 		self.poseMarks = [0]*len(ocmap.data) #store the state of each node
-		self.costmap = ocmap.data[:] #simple copy of the costmap
-		
+		self.costmap = list(ocmap.data) #simple copy of the costmap
+		self.updateCostMap(updateMap)
+		print "updated the map"
 		#create the state table
 		for i in range(len(self.states)):
-			if(ocmap.data[i]>=threshold):
+			if(self.costmap[i]>=self.threshold or self.costmap[i] is -1):
 				self.states[i] = CellState.BLOCKED #set the obstacles
 			else:
 				self.states[i] = CellState.FREE #unknown places (-1) are also marked as FREE
+
+	def updateCostMap(self,update):
+		for y in range(0,update.height):
+			for x in range(0,update.width):
+				self.setCost(x+update.x,y+update.y,update.data[y*update.width+x])
 
 	# get the state of a gridCell in the map
 	def getGridState(self, x, y):

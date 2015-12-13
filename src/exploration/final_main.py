@@ -10,6 +10,8 @@ import rospy
 from nav_msgs.msg import GridCells, OccupancyGrid
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.srv import GetPlan
+from std_srvs.srv import Empty
+
 
 def requestPath(startPose, goalPose):
 	
@@ -24,6 +26,16 @@ def requestPath(startPose, goalPose):
 		print("Service did not process request: " + str(exc))
 		
 	return plan.plan.poses
+
+def clearCostMap():
+	rospy.wait_for_service('/move_base/clear_costmaps')
+	clear = rospy.ServiceProxy('/move_base/clear_costmaps', Empty)
+	
+	try:
+		clear()
+	except rospy.ServiceException as exc:
+		print("Service did not process request: " + str(exc))
+
 
 #Main Function
 if __name__ == '__main__':
@@ -50,6 +62,9 @@ if __name__ == '__main__':
 		goalPose = centroid.toPoseStamped(mmap.resolution, mmap.origin, 0)
 		
 		path = requestPath(startPose, goalPose)
+		
+		if len(path)<=1: #no path
+			clearCostMap()
 		
 		globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
 		globalCentroidTopic.publish(frontier.centroid().toGridCell(mmap.resolution,mmap.origin))
