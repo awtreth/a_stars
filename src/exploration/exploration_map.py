@@ -3,6 +3,8 @@ from frontier import *
 from nav_msgs.msg import GridCells
 from map_msgs.msg import OccupancyGridUpdate
 
+import Queue, rospy
+
 class ExplorationMap(object):
 	#Possible states for each position of the map
 	FREE = 0
@@ -20,13 +22,14 @@ class ExplorationMap(object):
 		self.origin = Point2D(globalMap.info.origin.position.x, globalMap.info.origin.position.y)
 		self.resolution = globalMap.info.resolution
 
-		self.update(updateMap)
+		if(updateMap is not 0):
+			self.update(updateMap)
 
 	#create the state table
 		for i in range(0,len(self.mmap)):
-			if globalMap.data[i] >= threshold:
+			if self.mmap[i] >= threshold:
 				self.mmap[i] = self.OBSTACLE #set the obstacles
-			elif globalMap.data[i] < 0:
+			elif self.mmap[i] < 0:
 				self.mmap[i] = self.UNKNOWN
 			else:
 				self.mmap[i] = self.FREE
@@ -69,70 +72,94 @@ class ExplorationMap(object):
 		return frontier
 
 	def getFreeNeighboors(self, x, y):
-		neighboors = []
-		offsets = ((-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1))
+		freeNeighboors = []
 		
-		for offset in offsets:
-			xx = x+offset[0]
-			yy = y+offset[1]
-			if(self.inBounds(xx,yy)):
-				if self.get(xx, yy) is self.FREE:
-					neighboors.append(Point2D(xx,yy))
+		neighboors = Point2D(x,y).getNeighboors()
 		
-		return neighboors
+		for pt in neighboors:
+			if(self.get(pt.x, pt.y) is self.FREE):
+				freeNeighboors.append(pt)
+		
+		#~ for pt in freeNeighboors:
+			#~ print pt.toString()
+		
+		return freeNeighboors
+
+
+	def findClosestUnkown(self, initPoint):
+		
+		q = Queue.Queue()
+		q.put(initPoint)
+		marked = []
+		marked.append(initPoint)
 		
 		
-	#width first search
+		while not q.empty() and not rospy.is_shutdown():
+			pt = q.get()
+			neighboors = pt.getNeighboors()
+			for neighboor in neighboors:
+				if(neighboor not in marked):
+					marked.append(neighboor)
+					value = self.get(neighboor.x, neighboor.y)
+					if value is self.FREE:
+						q.put(neighboor)
+					elif value is self.UNKNOWN:
+						return pt #return the free point
+		
+		print "DONE!"
+		return Point2D()
 	
-	#~ class OrderedSetQueue(Queue.Queue):
-	#~ def _init(self, maxsize):
-		#~ self.queue = OrderedSet()
-	#~ def _put(self, item):
-		#~ self.queue.add(item)
-	#~ def _get(self):
-		#~ return self.queue.pop()
-#~ 
-#~ 
-#~ #helper for getFrontier
-	#~ def frontExpand(self, x , y):
-		#~ neighboors = []
-		#~ offsets = ((-1,0),(0,-1),(0,1),(1,0))
-		#~ 
-		#~ self.set(x , y , self.FREE_MARKED)
-		#~ 
-		#~ for offset in offsets:
-			#~ xx = x+offset[0]
-			#~ yy = y+offset[1]
-			#~ if(self.inBounds(xx,yy)):
-				#~ if self.get(xx, yy) is self.UNKOWN:
-					#~ return Point2d(x,y)
-					#~ 
-				#~ if self.get(xx, yy) is self.FREE:
-					#~ neighboors.append(Point2D(xx,yy))
-		#~ 
-		#~ return neighboors
-	#~ 
-	#~ #Takes the x y of robot returns point2d of nearest frontier
-	#~ def getFrontier(self, x , y)
-		#~ startPoint = Point2(x,y)
-		#~ que = OrderedSetQueue(1000)
-		#~ que.put(startPoint)
-		#~ while not rospy.is_shutdown():
-			#~ 
-			#~ fromQue = que.get()
-			#~ 
-			#~ expanded = frontExpand(fromQue.x , fromQue.y)
-			#~ 
-			#~ if self.get(expanded.x , expanded.y) is self.UNKNOWN
-				#~ return expanded
-				#~ 
-			#~ else:
-				#~ for point in expanded:
-					#~ que.put(point)
-				
-			
-			
-			
+	def dfsFree(self, initPoint):
+		q = []
+		q.append(initPoint)
+		marked = []
+		marked.append(initPoint)
+		
+		
+		while len(q)>0 and not rospy.is_shutdown():
+			pt = q.pop()
+			neighboors = pt.getNeighboors()
+			for neighboor in neighboors:
+				if(neighboor not in marked):
+					marked.append(neighboor)
+					value = self.get(neighboor.x, neighboor.y)
+					if value is self.FREE:
+						q.append(neighboor)
+					elif value is self.UNKNOWN:
+						return pt #return the free point
+		
+		print "DONE!"
+		return Point2D()
+
+	def getClosestFrontier(self,initPoint):
+		print "bfs"
+		newInitPoint = self.findClosestUnkown(initPoint)
+		#newInitPoint = self.dfsFree(initPoint)
+		print "dfs"
+		frontier = Frontier()
+		self.dfs(newInitPoint, frontier, [])
+		print "done"
+		return frontier
+	
+	def dfs(self, point, frontier, marked = []):
+		frontier.addPoint(point)
+		marked.append(point);
+		neighboors = self.getFreeNeighboors(point.x, point.y)
+		
+		for neighboor in neighboors:
+			if not neighboor.isInList(marked):
+				if self.hasUnknownNeighboors(neighboor):
+					self.dfs(neighboor, frontier, marked)
+				else: marked.append(neighboor)
+	
+	def hasUnknownNeighboors(self, pt):
+		neighboors = pt.getNeighboors()
+		
+		for neighboor in neighboors:
+			if self.get(neighboor.x, neighboor.y) is self.UNKNOWN:
+				return True
+		
+		return False
 	
 	# Return the GridCells ROS msg of the cells with state "value"
 	def getGridCell(self, value):

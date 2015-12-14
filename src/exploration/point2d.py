@@ -12,6 +12,26 @@ class Point2D(object):
 	def distTo(self, otherPoint):
 		return hypot(self.x-otherPoint.x, self.y-otherPoint.y)
 
+	def isConnectedTo(self, otherPoint):
+		if int(self.distTo(otherPoint)) > 1: return False
+		return True
+	
+	def equals(self,otherPoint):
+		if self.x == otherPoint.x and self.y == otherPoint.y: return True
+		else: return False
+	
+	
+	def getNeighboors(self):
+		offsets = ((-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1))
+		
+		points = []
+		
+		for offset in offsets:
+			points.append(Point2D(self.x+offset[0], self.y+offset[1]))
+			
+		return points
+
+
 	def toRosPoint(self, resolution, origin):
 		
 		point = Point()
@@ -29,6 +49,12 @@ class Point2D(object):
 		grid.cells.append(self.toRosPoint(resolution,origin))
 		
 		return grid
+	
+	def fromPoseStamped(self, pose, resolution, origin):
+		self.x = int((pose.pose.position.x- origin.x)/resolution)
+		self.y = int((pose.pose.position.y - origin.y)/resolution)
+		
+		return self
 
 	#angle: euler angle in radians
 	def toPoseStamped(self, resolution, origin, angle = 0):
@@ -44,3 +70,11 @@ class Point2D(object):
 		pose.pose.orientation.w = w
 		
 		return pose
+		
+	def toString(self):
+		return '('+repr(self.x)+','+repr(self.y)+')'
+
+	def isInList(self, checkList):
+		for pt in checkList:
+			if self.equals(pt): return True
+		return False

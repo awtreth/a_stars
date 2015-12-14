@@ -23,9 +23,36 @@ class Frontier(object):
 		del self.points[:]
 		self.size = 0
 	
+	def closestPointTo(self, to):
+		minDist = 99999999999999999
+		p = Point2D(to.x, to.y)
+		
+		for point in self.points:
+			dist = point.distTo(to)
+			if(dist < minDist):
+				minDist = dist
+				p.x = point.x
+				p.y = point.y
+		
+		return p
+	
 	#Return the smallest possible list of Frontiers where each frontier has connected points
 	def split(self):
-		pass
+		points = list(self.points)
+		frontiers = []
+		
+		while len(points) is not 0:
+			frontier = [points.pop()]
+			
+			i = 0
+			while i is not len(points):
+				if frontier[0].isConnectedTo(points[i]): frontier.append(points[i])
+				else: i+=1
+			
+			frontiers.append(frontier)
+		
+		return frontiers
+
 	
 	def centroid(self):
 		

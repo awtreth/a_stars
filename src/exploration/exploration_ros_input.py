@@ -18,6 +18,7 @@ class ExplorationRosInput(object):
 		self.status = 1
 		self.newMap = False
 		self.newStatus = False
+		self.hasUpdate = False
 	
 	def readGlobalCostMap(self, rosmap):
 		print "got map"
@@ -26,6 +27,7 @@ class ExplorationRosInput(object):
 	def readGlobalCostMapUpdates(self, rosmap):
 		print "updated map"
 		self.updateMap = rosmap
+		self.hasUpdate = True
 	
 	def getMap(self):
 		self.newMap = False
@@ -33,7 +35,10 @@ class ExplorationRosInput(object):
 		#return self.globalmap
 	
 	def getUpdateMap(self):
-		return self.updateMap
+		if(self.hasUpdate is True):
+			return self.updateMap
+		else:
+			return 0
 	
 	def getGlobalMap(self):
 		return self.globalMap

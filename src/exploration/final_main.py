@@ -47,27 +47,68 @@ if __name__ == '__main__':
 
 	globalCentroidTopic = rospy.Publisher("/globalCentroid", GridCells, queue_size=1)
 	globalFrontierTopic = rospy.Publisher("/globalFrontier", GridCells, queue_size=1)
+	obstaclesTopic = rospy.Publisher("/ExplorationObstacles", GridCells, queue_size=1)
+	freeTopic = rospy.Publisher("/ExplorationFree", GridCells, queue_size=1)
+	unknownTopic = rospy.Publisher("/ExplorationUnknown", GridCells, queue_size=1)
 	goalPub = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=1)
 
 	rospy.sleep(1)
 	
 	while(not rospy.is_shutdown()):
-
+		clearCostMap()
 		mmap = ExplorationMap(rosInput.getGlobalMap(), rosInput.getUpdateMap())    
 		print "received"
-		frontier = mmap.getFrontier()
-		centroid = frontier.centroid() #maybe we will not need this
+		#~ frontier = mmap.getClosestFrontier(startPoint)
+		#~ print "got frontier"
+		#~ rospy.sleep(1)
 		
+		#centroid = frontier.centroid() #maybe we will not need this
+		
+		#goalPose = frontier.closestPointTo(startPoint).toPoseStamped(mmap.resolution, mmap.origin, 0)
 		startPose = rosInput.getRobotPose()
-		goalPose = centroid.toPoseStamped(mmap.resolution, mmap.origin, 0)
+		startPoint = Point2D().fromPoseStamped(startPose, mmap.resolution, mmap.origin)
+		
+		#goalPoint = mmap.findClosestUnkown(startPoint)
+		#goalPose = goalPoint.toPoseStamped(mmap.resolution, mmap.origin)
+
+		#globalCentroidTopic.publish(goalPoint.toGridCell(mmap.resolution,mmap.origin))
+		#freeTopic.publish(mmap.getGridCell(0))
+		#obstaclesTopic.publish(mmap.getGridCell(1))
+		#unknownTopic.publish(mmap.getGridCell(2))
+		globalFrontierTopic.publish(mmap.getClosestFrontier(startPoint).toGridCell(mmap.resolution,mmap.origin))
+		
+		rospy.sleep(1)
+		
+		continue
+		
+		
+		if(goalPoint.x is 0):
+			print "clear"
+			clearCostMap()
+		
 		
 		path = requestPath(startPose, goalPose)
 		
 		if len(path)<=1: #no path
+			print "no paths"
 			clearCostMap()
 		
-		globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
-		globalCentroidTopic.publish(frontier.centroid().toGridCell(mmap.resolution,mmap.origin))
+		#globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
+		obstaclesTopic.publish(mmap.getGridCell(1))
+		
+		goalPub.publish(goalPose)
+		rospy.sleep(1)
+		while rosInput.getStatus() is 1 and not rospy.is_shutdown():
+			print "status = 1"
+			#if(rosInput.newMap): break
+			rospy.sleep(1)
+		else:
+			print "status = " + repr(rosInput.getStatus())
+		continue
+		
+		#rotate a little bit
+		if(rosInput.status is 3):continue
+		else: break
 		
 		for pose in path:
 			goalPub.publish(pose)

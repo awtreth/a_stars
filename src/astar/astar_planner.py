@@ -47,7 +47,7 @@ class AStarPlanner(object):
 	def gCost(self, node):
 		#The cost functions makes a trade-off between turn movements (slow) and the cost (as higher as you get close to obstacles)
 		if(node.pos.dir is not node.parent.pos.dir): #turn movement
-			return node.parent.g_n + 3 # avoid turns (5 is an intermediate cost for moveForward)
+			return node.parent.g_n + 1 # avoid turns (5 is an intermediate cost for moveForward)
 		else: #move ForwardMovement
 			return node.parent.g_n + 1 + self.map.getCost(node.pos.x, node.pos.y)/20 # around 0 to 10
 	

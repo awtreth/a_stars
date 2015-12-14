@@ -11,6 +11,10 @@ Panels:
         - /globalCentroid1
         - /AStarObstacles1
         - /AStarPath1
+        - /ExplorationFree1
+        - /ExplorationObstacles1
+        - /ExplorationMarked1
+        - /ExplorationUnknown1
       Splitter Ratio: 0.5
     Tree Height: 787
   - Class: rviz/Selection
@@ -30,7 +34,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: Cost Cloud
+    SyncSource: LaserScan (kinect)
 Visualization Manager:
   Class: ""
   Displays:
@@ -260,7 +264,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 1
@@ -276,7 +280,7 @@ Visualization Manager:
       Topic: /scan
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -538,10 +542,10 @@ Visualization Manager:
     - Alpha: 1
       Class: rviz/GridCells
       Color: 25; 255; 0
-      Enabled: true
+      Enabled: false
       Name: globalFrontier
       Topic: /globalFrontier
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/GridCells
       Color: 170; 0; 0
@@ -552,16 +556,44 @@ Visualization Manager:
     - Alpha: 1
       Class: rviz/GridCells
       Color: 0; 0; 0
-      Enabled: true
+      Enabled: false
       Name: AStarObstacles
       Topic: /AStarObstacles
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/GridCells
       Color: 255; 255; 0
       Enabled: true
       Name: AStarPath
       Topic: /AStarPath
+      Value: true
+    - Alpha: 1
+      Class: rviz/GridCells
+      Color: 255; 255; 255
+      Enabled: true
+      Name: ExplorationFree
+      Topic: /ExplorationFree
+      Value: true
+    - Alpha: 1
+      Class: rviz/GridCells
+      Color: 0; 0; 0
+      Enabled: true
+      Name: ExplorationObstacles
+      Topic: /ExplorationObstacles
+      Value: true
+    - Alpha: 1
+      Class: rviz/GridCells
+      Color: 25; 255; 0
+      Enabled: true
+      Name: ExplorationMarked
+      Topic: /ExplorationMarked
+      Value: true
+    - Alpha: 1
+      Class: rviz/GridCells
+      Color: 170; 170; 255
+      Enabled: true
+      Name: ExplorationUnknown
+      Topic: /ExplorationUnknonwn
       Value: true
   Enabled: true
   Global Options:
@@ -583,16 +615,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 19.1137
+      Distance: 10.9904
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 5.01262
-        Y: 4.28547
-        Z: -0.424504
+        X: -1.78051
+        Y: 2.39826
+        Z: -0.158806
       Name: Current View
       Near Clip Distance: 0.01
       Pitch: 1.5298
