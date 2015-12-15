@@ -1,11 +1,32 @@
 from point2d import *
 from nav_msgs.msg import GridCells
+import rospy
 
 class Frontier(object):
 	def __init__(self, allPoints = []):
 		self.points = []
 		self.size = 0
 		self.addAllPoints(allPoints)
+	
+	def get(self, pos):
+		return self.points[pos]
+	
+	def getLast(self):
+		return self.points[-1]
+	
+	def remove(self, pt):
+		self.points.remove(pt)
+	
+	def removePoints(self, pts):
+		for pt in pts:
+			self.remove(pt)
+	
+	
+	def isConnectedTo(self, point):
+		for pt in self.points:
+			if pt.isConnectedTo(point):
+				return True
+		return False
 	
 	def addPoint(self, point):
 		self.points.append(point)
@@ -38,22 +59,11 @@ class Frontier(object):
 	
 	#Return the smallest possible list of Frontiers where each frontier has connected points
 	def split(self):
-		points = list(self.points)
-		frontiers = []
-		
-		while len(points) is not 0:
-			frontier = [points.pop()]
-			
-			i = 0
-			while i is not len(points):
-				if frontier[0].isConnectedTo(points[i]): frontier.append(points[i])
-				else: i+=1
-			
-			frontiers.append(frontier)
-		
-		return frontiers
+		pass
 
-	
+	def getMiddlePoint(self):
+		return self.points[int(self.size/2)]
+
 	def centroid(self):
 		
 		sumx = 0
@@ -75,4 +85,11 @@ class Frontier(object):
 			grid.cells.append(point.toRosPoint(resolution,origin))
 		
 		return grid
+
+	def toString(self):
+		string = ""
+		for pt in self.points:
+			string += pt.toString()
+		
+		return string
 

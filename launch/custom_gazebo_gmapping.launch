@@ -1,0 +1,7 @@
+<launch>
+  <include file="$(find turtlebot_gazebo)/launch/turtlebot_world.launch"/>
+  
+  <include file="$(find turtlebot_gazebo)/launch/gmapping_demo.launch"/>
+  
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find a_stars)/rviz/exploration.rviz"/>
+</launch>

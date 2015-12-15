@@ -3,7 +3,7 @@ from frontier import *
 from nav_msgs.msg import GridCells
 from map_msgs.msg import OccupancyGridUpdate
 
-import Queue, rospy
+import Queue, rospy, math
 
 class ExplorationMap(object):
 	#Possible states for each position of the map
@@ -21,19 +21,20 @@ class ExplorationMap(object):
 		#it assumes that the orientation of the globalCostMap doesn't change
 		self.origin = Point2D(globalMap.info.origin.position.x, globalMap.info.origin.position.y)
 		self.resolution = globalMap.info.resolution
+		self.knownPoints = [] #FIXME: change to knownFreePoints
 
 		if(updateMap is not 0):
 			self.update(updateMap)
 
-	#create the state table
+		#create the state table
 		for i in range(0,len(self.mmap)):
-			if self.mmap[i] >= threshold:
-				self.mmap[i] = self.OBSTACLE #set the obstacles
-			elif self.mmap[i] < 0:
+			if self.mmap[i] < 0:
 				self.mmap[i] = self.UNKNOWN
+			elif self.mmap[i] >= threshold:
+				self.mmap[i] = self.OBSTACLE #set the obstacles
 			else:
+				self.knownPoints.append(Point2D(int(math.fmod(i,self.width)),int(i/self.width)))
 				self.mmap[i] = self.FREE
-		
 
 	def update(self,update):
 		for y in range(0,update.height):
@@ -59,40 +60,64 @@ class ExplorationMap(object):
 		if(x >= 0 and x < self.width and y >= 0 and y < self.height): return True
 		else: return False
 
-	#Return the frontier
-	def getFrontier(self):  #now old
+	#Return all connected frontiers
+	#actually it's not "get". It calculates
+	def getAllFrontiers(self):
+		bigFrontier = self.getGlobalFrontier()
+		
+		frontiers = []
+		
+		while len(bigFrontier.points) > 0 and not rospy.is_shutdown():
+			frontier = Frontier()
+			self.dfs(bigFrontier.get(0), frontier,[])
+			bigFrontier.removePoints(frontier.points)
+			frontiers.append(frontier)
+		
+		return frontiers
+
+	#Return the global frontier (they are not connected)
+	def getGlobalFrontier(self):  #now old
 		
 		frontier = Frontier()
 		
-		for y in range(self.height):
-			for x in range(self.width):
-				if(self.get(x,y) == self.UNKNOWN):
-					frontier.addPoints(self.getFreeNeighboors(x,y))
-
+		for pt in self.knownPoints:
+			if self.hasSpecificNeighboor(pt.x,pt.y,self.UNKNOWN) == True:
+				frontier.addPoint(pt)
+		
 		return frontier
 
-	def getFreeNeighboors(self, x, y):
-		freeNeighboors = []
+	#return the neighboors that has the "state" value
+	def getSpecificNeighboors(self,x,y,state):
+		specificNeighboors = []
 		
 		neighboors = Point2D(x,y).getNeighboors()
 		
 		for pt in neighboors:
-			if(self.get(pt.x, pt.y) is self.FREE):
-				freeNeighboors.append(pt)
+			if self.inBounds(pt.x, pt.y):
+				if(self.get(pt.x, pt.y) == state):
+					specificNeighboors.append(pt)
+					
+		return specificNeighboors
+	
+	#return True if the specified has a neighboor with the specified state
+	def hasSpecificNeighboor(self,x,y,state):
+		neighboors = Point2D(x,y).getNeighboors()
 		
-		#~ for pt in freeNeighboors:
-			#~ print pt.toString()
-		
-		return freeNeighboors
+		for pt in neighboors:
+			if self.inBounds(pt.x, pt.y):
+				if self.get(pt.x, pt.y) == state:
+					return True
+					
+		return False
 
-
+	#Breadth-First Search. Return the closest Free point that has an unknown neighboor
+	#For now it's not feasable for big maps
 	def findClosestUnkown(self, initPoint):
 		
 		q = Queue.Queue()
 		q.put(initPoint)
 		marked = []
 		marked.append(initPoint)
-		
 		
 		while not q.empty() and not rospy.is_shutdown():
 			pt = q.get()
@@ -108,58 +133,29 @@ class ExplorationMap(object):
 		
 		print "DONE!"
 		return Point2D()
-	
-	def dfsFree(self, initPoint):
-		q = []
-		q.append(initPoint)
-		marked = []
-		marked.append(initPoint)
-		
-		
-		while len(q)>0 and not rospy.is_shutdown():
-			pt = q.pop()
-			neighboors = pt.getNeighboors()
-			for neighboor in neighboors:
-				if(neighboor not in marked):
-					marked.append(neighboor)
-					value = self.get(neighboor.x, neighboor.y)
-					if value is self.FREE:
-						q.append(neighboor)
-					elif value is self.UNKNOWN:
-						return pt #return the free point
-		
-		print "DONE!"
-		return Point2D()
 
+	#Try to find the first free point that has an unknown neighboor and then performs dfs to find connected frontier points
 	def getClosestFrontier(self,initPoint):
 		print "bfs"
 		newInitPoint = self.findClosestUnkown(initPoint)
-		#newInitPoint = self.dfsFree(initPoint)
-		print "dfs"
+		print dfs
 		frontier = Frontier()
 		self.dfs(newInitPoint, frontier, [])
-		print "done"
 		return frontier
 	
+	#performs DepthFirstSearch to find frontier points
+	#assumes that the first point is a frontier point
 	def dfs(self, point, frontier, marked = []):
+		
 		frontier.addPoint(point)
 		marked.append(point);
-		neighboors = self.getFreeNeighboors(point.x, point.y)
+		neighboors = self.getSpecificNeighboors(point.x, point.y, self.FREE)
 		
 		for neighboor in neighboors:
 			if not neighboor.isInList(marked):
-				if self.hasUnknownNeighboors(neighboor):
+				if self.hasSpecificNeighboor(neighboor.x, neighboor.y, self.UNKNOWN) == True:
 					self.dfs(neighboor, frontier, marked)
 				else: marked.append(neighboor)
-	
-	def hasUnknownNeighboors(self, pt):
-		neighboors = pt.getNeighboors()
-		
-		for neighboor in neighboors:
-			if self.get(neighboor.x, neighboor.y) is self.UNKNOWN:
-				return True
-		
-		return False
 	
 	# Return the GridCells ROS msg of the cells with state "value"
 	def getGridCell(self, value):

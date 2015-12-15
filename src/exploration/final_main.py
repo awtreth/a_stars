@@ -55,9 +55,12 @@ if __name__ == '__main__':
 	rospy.sleep(1)
 	
 	while(not rospy.is_shutdown()):
+		print "started"
 		clearCostMap()
+		print "cleared"
 		mmap = ExplorationMap(rosInput.getGlobalMap(), rosInput.getUpdateMap())    
 		print "received"
+		
 		#~ frontier = mmap.getClosestFrontier(startPoint)
 		#~ print "got frontier"
 		#~ rospy.sleep(1)
@@ -75,7 +78,17 @@ if __name__ == '__main__':
 		#freeTopic.publish(mmap.getGridCell(0))
 		#obstaclesTopic.publish(mmap.getGridCell(1))
 		#unknownTopic.publish(mmap.getGridCell(2))
-		globalFrontierTopic.publish(mmap.getClosestFrontier(startPoint).toGridCell(mmap.resolution,mmap.origin))
+		#globalFrontierTopic.publish(mmap.getClosestFrontier(startPoint).toGridCell(mmap.resolution,mmap.origin))
+		frontiers = mmap.getAllFrontiers()
+		
+		maxF = frontiers[0]
+		mmax = frontiers[0].size
+		for frontier in frontiers:
+			if frontier.size > mmax:
+				maxF = frontier
+				mmax = frontier.size
+		
+		globalFrontierTopic.publish(maxF.toGridCell(mmap.resolution,mmap.origin))
 		
 		rospy.sleep(1)
 		

@@ -8,12 +8,19 @@ class Point2D(object):
 	def __init__(self,x=0,y=0):
 		self.x = x
 		self.y = y
+		
+		
+	def __eq__(self, other):
+		return self.equals(other)
+
+	def __ne__(self, other):
+		return not self.equals(other)
 
 	def distTo(self, otherPoint):
 		return hypot(self.x-otherPoint.x, self.y-otherPoint.y)
 
 	def isConnectedTo(self, otherPoint):
-		if int(self.distTo(otherPoint)) > 1: return False
+		if int(self.distTo(otherPoint)) >= 2: return False
 		return True
 	
 	def equals(self,otherPoint):
@@ -30,7 +37,6 @@ class Point2D(object):
 			points.append(Point2D(self.x+offset[0], self.y+offset[1]))
 			
 		return points
-
 
 	def toRosPoint(self, resolution, origin):
 		
