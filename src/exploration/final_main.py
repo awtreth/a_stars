@@ -11,6 +11,7 @@ from nav_msgs.msg import GridCells, OccupancyGrid
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.srv import GetPlan
 from std_srvs.srv import Empty
+from Queue import PriorityQueue
 
 
 def requestPath(startPose, goalPose):
@@ -41,7 +42,7 @@ def checkStatus(rosInput, goalPose):
 	
 	endTime = rospy.Time.now() + rospy.Duration(20)
 	
-	while rospy.Time.now() < endTime:
+	while rospy.Time.now() < endTime and not rospy.is_shutdown():
 		robotPose = rosInput.getRobotPose()
 		robotPoint = Point2D(robotPose.pose.position.x, robotPose.pose.position.y)
 		if(robotPoint.distTo(goalPoint) < .3):
@@ -59,10 +60,23 @@ def rotate(w,time):
 	
 	endTime = rospy.Time.now() + rospy.Duration(time)
 	
-	while rospy.Time.now() < endTime:
+	while rospy.Time.now() < endTime and not rospy.is_shutdown():
 		moveBasePub.publish(msg)
 		rospy.sleep(.08)
-	
+
+def filterFrontiers(frontiers,robotPoint,threshold = 7):
+	pq = PriorityQueue()
+
+	for frontier in frontiers:
+		if frontier.size < threshold:
+			continue
+		pq.put( (robotPoint.distTo(frontier.getMiddlePoint()), frontier.getMiddlePoint()) )		
+
+	lst = []	
+	while not pq.empty() and not rospy.is_shutdown():
+		lst.append(pq.get()[1])
+
+	return lst
 
 #Main Function
 if __name__ == '__main__':
@@ -89,7 +103,7 @@ if __name__ == '__main__':
 
 	while(not rospy.is_shutdown()):
 		print "started"
-		#clearCostMap()
+		rospy.sleep(1)
 		print "cleared"
 		mmap = ExplorationMap(rosInput.getGlobalMap(), rosInput.getUpdateMap())    
 		print "received"
@@ -105,11 +119,28 @@ if __name__ == '__main__':
 		startPoint = Point2D().fromPoseStamped(startPose, mmap.resolution, mmap.origin)
 		
 		#goalPoint = mmap.findClosestUnknown(startPoint)
-		frontier = mmap.getClosestFrontier(startPoint)
-		print frontier.size
+		#frontier = mmap.getClosestFrontier(startPoint)
+		frontiers = mmap.getAllFrontiers()
+		for frontier in frontiers:
+			print "f"
+			print frontier.toString()
+
+		frontiersPoints = filterFrontiers(frontiers, startPoint)
+		goalPoint = Point2D()
+		for pt in frontiersPoints:
+			print "request path"
+			path = requestPath(startPose, pt.toPoseStamped(mmap.resolution,mmap.origin))
+			print "got path"
 		
+			if len(path) > 1: #no path
+				goalPoint = pt
+				break
+		else:
+			print "NO MORE FRONTIERS"
+			break
+
+
 		print "got the closest Frontier"
-		goalPoint = frontier.getMiddlePoint()		
 		
 		goalPose = goalPoint.toPoseStamped(mmap.resolution, mmap.origin)
 
@@ -118,16 +149,7 @@ if __name__ == '__main__':
 		#obstaclesTopic.publish(mmap.getGridCell(1))
 		#unknownTopic.publish(mmap.getGridCell(2))
 		#globalFrontierTopic.publish(mmap.getClosestFrontier(startPoint).toGridCell(mmap.resolution,mmap.origin))
-		globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
-		
-		print "request path"
-		path = requestPath(startPose, goalPose)
-		print "got path"
-		
-		if len(path)<=1: #no path
-			print "no paths"
-			clearCostMap()
-			continue
+		#globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
 		
 		
 		for pose in path:
@@ -137,6 +159,7 @@ if __name__ == '__main__':
 			status = checkStatus(rosInput, pose)
 			
 			if status is not 3:
+				clearCostMap()
 				print "recovery turn"
 				rotate(1,3)
 				rotate(-1,5)
