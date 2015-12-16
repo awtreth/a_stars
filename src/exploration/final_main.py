@@ -100,7 +100,7 @@ if __name__ == '__main__':
 	rospy.sleep(1)
 
 	#rotate(1,15) #rotate for 10 seconds
-	#rotate(-.8,10) #rotate for 10 seconds	
+	rotate(-.8,30) #rotate for 10 seconds	
 
 	while(not rospy.is_shutdown()):
 		print "started"
