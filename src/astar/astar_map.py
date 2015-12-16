@@ -30,7 +30,7 @@ class AStarMap(object):
 		print "updated the map"
 		#create the state table
 		for i in range(len(self.states)):
-			if(self.costmap[i]>=self.threshold):# or self.costmap[i] is -1):
+			if(self.costmap[i]>=self.threshold or self.costmap[i] is -1):
 				self.states[i] = CellState.BLOCKED #set the obstacles
 			else:
 				self.states[i] = CellState.FREE #unknown places (-1) are also marked as FREE

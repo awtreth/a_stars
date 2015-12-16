@@ -117,20 +117,15 @@ class ExplorationMap(object):
 		
 		q = Queue.Queue()
 		q.put(initPoint)
-		marked = []
-		marked.append(initPoint)
 		
 		while not q.empty() and not rospy.is_shutdown():
 			pt = q.get()
-			neighboors = pt.getNeighboors()
+			if self.hasSpecificNeighboor(pt.x,pt.y,self.UNKNOWN):
+				return pt
+			neighboors = self.getSpecificNeighboors(pt.x,pt.y,self.FREE)
 			for neighboor in neighboors:
-				value = self.get(neighboor.x, neighboor.y)
-				if value is self.FREE:
-					if(neighboor not in marked):
-						marked.append(neighboor)
-						q.put(neighboor)
-				elif value is self.UNKNOWN:
-					return pt #return the free point
+				self.set(neighboor.x, neighboor.y,self.FREE_MARKED)
+				q.put(neighboor)
 		
 		print "DONE!"
 		return Point2D()
