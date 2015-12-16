@@ -1,0 +1,4 @@
+<launch>
+  <!--  **************** Visualisation ****************  -->
+  <node name="rviz" pkg="rviz" type="rviz" args="../rviz/exploration.rviz"/>
+</launch>

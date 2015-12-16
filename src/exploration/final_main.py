@@ -84,8 +84,9 @@ if __name__ == '__main__':
 
 	rospy.sleep(1)
 
-	rotate(1,20) #rotate for 10 seconds
-	
+	rotate(1,15) #rotate for 10 seconds
+	rotate(-1,15) #rotate for 10 seconds	
+
 	while(not rospy.is_shutdown()):
 		print "started"
 		#clearCostMap()
@@ -105,9 +106,7 @@ if __name__ == '__main__':
 		
 		#goalPoint = mmap.findClosestUnknown(startPoint)
 		frontier = mmap.getClosestFrontier(startPoint)
-		if frontier.size <= 1:
-			print "DOOONEEE!!"
-			break
+		print frontier.size
 		
 		print "got the closest Frontier"
 		goalPoint = frontier.getMiddlePoint()		
@@ -139,8 +138,8 @@ if __name__ == '__main__':
 			
 			if status is not 3:
 				print "recovery turn"
-				rotate(1,5)
-				rotate(-1,10)
+				rotate(1,3)
+				rotate(-1,5)
 				break
 		
 		print "broke"
