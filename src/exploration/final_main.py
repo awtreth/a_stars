@@ -40,7 +40,7 @@ def clearCostMap():
 def checkStatus(rosInput, goalPose):
 	goalPoint = Point2D(goalPose.pose.position.x, goalPose.pose.position.y)
 	
-	endTime = rospy.Time.now() + rospy.Duration(20)
+	endTime = rospy.Time.now() + rospy.Duration(10)
 	
 	while rospy.Time.now() < endTime and not rospy.is_shutdown():
 		robotPose = rosInput.getRobotPose()
@@ -62,15 +62,15 @@ def rotate(w,time):
 	
 	while rospy.Time.now() < endTime and not rospy.is_shutdown():
 		moveBasePub.publish(msg)
-		rospy.sleep(.08)
+		rospy.sleep(.05)
 
-def filterFrontiers(frontiers,robotPoint,threshold = 7):
+def filterFrontiers(frontiers,robotPoint,threshold = 15):
 	pq = PriorityQueue()
 
 	for frontier in frontiers:
 		if frontier.size < threshold:
 			continue
-		pq.put( (robotPoint.distTo(frontier.centroid()), frontier) )		
+		pq.put( (robotPoint.distTo(frontier.centroid()), frontier.copy()) )		
 
 	lst = []	
 	while not pq.empty() and not rospy.is_shutdown():
@@ -96,50 +96,33 @@ if __name__ == '__main__':
 	global moveBasePub
 	moveBasePub = rospy.Publisher("/cmd_vel_mux/input/teleop", Twist, queue_size=1)
 
+	#clearCostMap()
 	rospy.sleep(1)
 
 	#rotate(1,15) #rotate for 10 seconds
-	#rotate(-1,45) #rotate for 10 seconds	
+	#rotate(-.8,10) #rotate for 10 seconds	
 
 	while(not rospy.is_shutdown()):
 		print "started"
+		#clearCostMap()
 		rospy.sleep(1)
 		print "cleared"
 		mmap = ExplorationMap(rosInput.getGlobalMap(), rosInput.getUpdateMap())    
 		print "received"
-		
-		globalFrontierTopic.publish(mmap.getGlobalFrontier().toGridCell(mmap.resolution,mmap.origin))
-		#continue
-		raw_input()
-		#~ frontier = mmap.getClosestFrontier(startPoint)
-		#~ print "got frontier"
-		#~ rospy.sleep(1)
-		
-		#centroid = frontier.centroid() #maybe we will not need this
-		
-		#goalPose = frontier.closestPointTo(startPoint).toPoseStamped(mmap.resolution, mmap.origin, 0)
+
 		startPose = rosInput.getRobotPose()
 		startPoint = Point2D().fromPoseStamped(startPose, mmap.resolution, mmap.origin)
 		
-		#goalPoint = mmap.findClosestUnknown(startPoint)
-		#frontier = mmap.getClosestFrontier(startPoint)
 		frontiers = mmap.getAllFrontiers()
-		print "before"		
-		for frontier in frontiers:
-			globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
-			raw_input()
-		print "filtered"
-		frontiers = filterFrontiers(frontiers, startPoint)
-		for frontier in frontiers:
-			globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
-			raw_input()
+		#frontiers = mmap.findClosestUnknown(startPoint)
+		frontierss = filterFrontiers(frontiers, startPoint)
 		#continue
 
 		frontier = Frontier()
-		for f in frontiers:
+		for f in frontierss:
 			globalFrontierTopic.publish(f.toGridCell(mmap.resolution,mmap.origin))
 			print "request path"
-			path = requestPath(startPose, f.getMiddlePoint().toPoseStamped(mmap.resolution,mmap.origin))
+			path = requestPath(startPose, f.centroid().toPoseStamped(mmap.resolution,mmap.origin))
 			print "got path"
 		
 			if len(path) >= 1: 
@@ -147,19 +130,19 @@ if __name__ == '__main__':
 				break
 		else:
 			print "NO MORE FRONTIERS"
-			break
+			#clearCostMap()
+			continue
 
 
 		print "got the closest Frontier"
 		
-		goalPoint = frontier.getMiddlePoint()
+		goalPoint = frontier.centroid()
 		goalPose = goalPoint.toPoseStamped(mmap.resolution, mmap.origin)
 
 		globalCentroidTopic.publish(goalPoint.toGridCell(mmap.resolution,mmap.origin))
-		freeTopic.publish(mmap.getGridCell(3))
-		#obstaclesTopic.publish(mmap.getGridCell(1))
+		freeTopic.publish(mmap.getGridCell(0))
+		obstaclesTopic.publish(mmap.getGridCell(1))
 		#unknownTopic.publish(mmap.getGridCell(2))
-		#globalFrontierTopic.publish(mmap.getClosestFrontier(startPoint).toGridCell(mmap.resolution,mmap.origin))
 		
 		
 		for pose in path:
@@ -169,10 +152,10 @@ if __name__ == '__main__':
 			status = checkStatus(rosInput, pose)
 			
 			if status is not 3:
-				clearCostMap()
+				#clearCostMap()
 				print "recovery turn"
-				rotate(1,3)
-				rotate(-1,5)
+				#rotate(1,3)
+				#rotate(-1,5)
 				break
 		
 		print "broke"

@@ -542,10 +542,10 @@ Visualization Manager:
     - Alpha: 1
       Class: rviz/GridCells
       Color: 25; 255; 0
-      Enabled: false
+      Enabled: true
       Name: globalFrontier
       Topic: /globalFrontier
-      Value: false
+      Value: true
     - Alpha: 1
       Class: rviz/GridCells
       Color: 170; 0; 0

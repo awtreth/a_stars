@@ -13,7 +13,7 @@ class ExplorationMap(object):
 	FREE_MARKED = 3
 	
 	#Default Constructor
-	def __init__(self, globalMap, updateMap, threshold = 90):
+	def __init__(self, globalMap, updateMap, threshold = 99):
 		
 		self.width = globalMap.info.width
 		self.height = globalMap.info.height
@@ -72,7 +72,7 @@ class ExplorationMap(object):
 			frontier = Frontier()
 			self.dfs(bigFrontier.get(0), frontier,[])
 			bigFrontier.removePoints(frontier.points)
-			frontiers.append(frontier)
+			frontiers.append(frontier.copy())
 		
 		return frontiers
 
@@ -117,18 +117,26 @@ class ExplorationMap(object):
 		
 		q = Queue.Queue()
 		q.put(initPoint)
+		frontiers = []
+		frontier = Frontier()
 		
 		while not q.empty() and not rospy.is_shutdown():
 			pt = q.get()
 			if self.hasSpecificNeighboor(pt.x,pt.y,self.UNKNOWN):
-				return pt
+				if frontier.size > 0:
+					if not frontier.getLast().isConnectedTo(pt):
+						frontiers.append(frontier.copy())
+						frontier = Frontier()
+				
+				frontier.addPoint(pt)
+
 			neighboors = self.getSpecificNeighboors(pt.x,pt.y,self.FREE)
 			for neighboor in neighboors:
 				self.set(neighboor.x, neighboor.y,self.FREE_MARKED)
 				q.put(neighboor)
 		
 		print "DONE!"
-		return Point2D()
+		return frontiers
 
 	#Try to find the first free point that has an unknown neighboor and then performs dfs to find connected frontier points
 	def getClosestFrontier(self,initPoint):
