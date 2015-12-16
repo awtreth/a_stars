@@ -40,7 +40,8 @@ class ExplorationMap(object):
 		for y in range(0,update.height):
 			for x in range(0,update.width):
 				if self.inBounds(x+update.x,y+update.y):
-					self.mmap[(y+update.y)*self.width+(x+update.x)] = update.data[y*update.width+x]
+					if update.data[y*update.width+x] >= 0:
+						self.mmap[(y+update.y)*self.width+(x+update.x)] = update.data[y*update.width+x]
 
 	#Get the state of the specified position
 	def get(self,x,y):

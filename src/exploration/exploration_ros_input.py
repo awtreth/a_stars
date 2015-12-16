@@ -35,11 +35,11 @@ class ExplorationRosInput(object):
 		#return self.globalmap
 	
 	def getUpdateMap(self):
-		if(self.hasUpdate is True):
-			return self.updateMap
-		else:
-			return 0
-	
+		while self.hasUpdate is False and not rospy.is_shutdown():
+			pass
+		self.hasUpdate = False
+		return self.updateMap
+
 	def getGlobalMap(self):
 		return self.globalMap
 	
