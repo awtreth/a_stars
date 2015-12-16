@@ -112,7 +112,7 @@ class ExplorationMap(object):
 
 	#Breadth-First Search. Return the closest Free point that has an unknown neighboor
 	#For now it's not feasable for big maps
-	def findClosestUnkown(self, initPoint):
+	def findClosestUnknown(self, initPoint):
 		
 		q = Queue.Queue()
 		q.put(initPoint)
@@ -137,7 +137,7 @@ class ExplorationMap(object):
 	#Try to find the first free point that has an unknown neighboor and then performs dfs to find connected frontier points
 	def getClosestFrontier(self,initPoint):
 		print "bfs"
-		newInitPoint = self.findClosestUnkown(initPoint)
+		newInitPoint = self.findClosestUnknown(initPoint)
 		print dfs
 		frontier = Frontier()
 		self.dfs(newInitPoint, frontier, [])

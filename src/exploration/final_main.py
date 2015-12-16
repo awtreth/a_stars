@@ -53,6 +53,8 @@ if __name__ == '__main__':
 	goalPub = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=1)
 
 	rospy.sleep(1)
+
+
 	
 	while(not rospy.is_shutdown()):
 		print "started"
@@ -71,43 +73,23 @@ if __name__ == '__main__':
 		startPose = rosInput.getRobotPose()
 		startPoint = Point2D().fromPoseStamped(startPose, mmap.resolution, mmap.origin)
 		
-		#goalPoint = mmap.findClosestUnkown(startPoint)
-		#goalPose = goalPoint.toPoseStamped(mmap.resolution, mmap.origin)
+		goalPoint = mmap.findClosestUnknown(startPoint)
+		goalPose = goalPoint.toPoseStamped(mmap.resolution, mmap.origin)
 
-		#globalCentroidTopic.publish(goalPoint.toGridCell(mmap.resolution,mmap.origin))
+		globalCentroidTopic.publish(goalPoint.toGridCell(mmap.resolution,mmap.origin))
 		#freeTopic.publish(mmap.getGridCell(0))
 		#obstaclesTopic.publish(mmap.getGridCell(1))
 		#unknownTopic.publish(mmap.getGridCell(2))
 		#globalFrontierTopic.publish(mmap.getClosestFrontier(startPoint).toGridCell(mmap.resolution,mmap.origin))
-		frontiers = mmap.getAllFrontiers()
-		
-		maxF = frontiers[0]
-		mmax = frontiers[0].size
-		for frontier in frontiers:
-			if frontier.size > mmax:
-				maxF = frontier
-				mmax = frontier.size
-		
-		globalFrontierTopic.publish(maxF.toGridCell(mmap.resolution,mmap.origin))
-		
-		rospy.sleep(1)
-		
-		continue
-		
-		
-		if(goalPoint.x is 0):
-			print "clear"
-			clearCostMap()
-		
 		
 		path = requestPath(startPose, goalPose)
 		
 		if len(path)<=1: #no path
 			print "no paths"
-			clearCostMap()
+			continue
+			#clearCostMap()
 		
 		#globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
-		obstaclesTopic.publish(mmap.getGridCell(1))
 		
 		goalPub.publish(goalPose)
 		rospy.sleep(1)
