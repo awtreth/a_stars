@@ -13,7 +13,7 @@ class ExplorationMap(object):
 	FREE_MARKED = 3
 	
 	#Default Constructor
-	def __init__(self, globalMap, updateMap, threshold = 99):
+	def __init__(self, globalMap, updateMap, threshold = 90):
 		
 		self.width = globalMap.info.width
 		self.height = globalMap.info.height

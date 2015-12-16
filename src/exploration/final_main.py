@@ -70,7 +70,7 @@ def filterFrontiers(frontiers,robotPoint,threshold = 7):
 	for frontier in frontiers:
 		if frontier.size < threshold:
 			continue
-		pq.put( (robotPoint.distTo(frontier.getMiddlePoint()), frontier.getMiddlePoint()) )		
+		pq.put( (robotPoint.distTo(frontier.centroid()), frontier) )		
 
 	lst = []	
 	while not pq.empty() and not rospy.is_shutdown():
@@ -98,8 +98,8 @@ if __name__ == '__main__':
 
 	rospy.sleep(1)
 
-	rotate(1,15) #rotate for 10 seconds
-	rotate(-1,15) #rotate for 10 seconds	
+	#rotate(1,15) #rotate for 10 seconds
+	#rotate(-1,45) #rotate for 10 seconds	
 
 	while(not rospy.is_shutdown()):
 		print "started"
@@ -108,6 +108,9 @@ if __name__ == '__main__':
 		mmap = ExplorationMap(rosInput.getGlobalMap(), rosInput.getUpdateMap())    
 		print "received"
 		
+		globalFrontierTopic.publish(mmap.getGlobalFrontier().toGridCell(mmap.resolution,mmap.origin))
+		#continue
+		raw_input()
 		#~ frontier = mmap.getClosestFrontier(startPoint)
 		#~ print "got frontier"
 		#~ rospy.sleep(1)
@@ -121,19 +124,26 @@ if __name__ == '__main__':
 		#goalPoint = mmap.findClosestUnknown(startPoint)
 		#frontier = mmap.getClosestFrontier(startPoint)
 		frontiers = mmap.getAllFrontiers()
+		print "before"		
 		for frontier in frontiers:
-			print "f"
-			print frontier.toString()
+			globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
+			raw_input()
+		print "filtered"
+		frontiers = filterFrontiers(frontiers, startPoint)
+		for frontier in frontiers:
+			globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
+			raw_input()
+		#continue
 
-		frontiersPoints = filterFrontiers(frontiers, startPoint)
-		goalPoint = Point2D()
-		for pt in frontiersPoints:
+		frontier = Frontier()
+		for f in frontiers:
+			globalFrontierTopic.publish(f.toGridCell(mmap.resolution,mmap.origin))
 			print "request path"
-			path = requestPath(startPose, pt.toPoseStamped(mmap.resolution,mmap.origin))
+			path = requestPath(startPose, f.getMiddlePoint().toPoseStamped(mmap.resolution,mmap.origin))
 			print "got path"
 		
-			if len(path) > 1: #no path
-				goalPoint = pt
+			if len(path) >= 1: 
+				frontier = f
 				break
 		else:
 			print "NO MORE FRONTIERS"
@@ -142,6 +152,7 @@ if __name__ == '__main__':
 
 		print "got the closest Frontier"
 		
+		goalPoint = frontier.getMiddlePoint()
 		goalPose = goalPoint.toPoseStamped(mmap.resolution, mmap.origin)
 
 		globalCentroidTopic.publish(goalPoint.toGridCell(mmap.resolution,mmap.origin))
@@ -149,7 +160,6 @@ if __name__ == '__main__':
 		#obstaclesTopic.publish(mmap.getGridCell(1))
 		#unknownTopic.publish(mmap.getGridCell(2))
 		#globalFrontierTopic.publish(mmap.getClosestFrontier(startPoint).toGridCell(mmap.resolution,mmap.origin))
-		#globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
 		
 		
 		for pose in path:
