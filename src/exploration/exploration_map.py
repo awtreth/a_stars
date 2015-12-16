@@ -39,7 +39,8 @@ class ExplorationMap(object):
 	def update(self,update):
 		for y in range(0,update.height):
 			for x in range(0,update.width):
-				self.mmap[(y+update.y)*self.width+(x+update.x)] = update.data[y*update.width+x]
+				if self.inBounds(x+update.x,y+update.y):
+					self.mmap[(y+update.y)*self.width+(x+update.x)] = update.data[y*update.width+x]
 
 	#Get the state of the specified position
 	def get(self,x,y):
@@ -123,13 +124,13 @@ class ExplorationMap(object):
 			pt = q.get()
 			neighboors = pt.getNeighboors()
 			for neighboor in neighboors:
-				if(neighboor not in marked):
-					marked.append(neighboor)
-					value = self.get(neighboor.x, neighboor.y)
-					if value is self.FREE:
+				value = self.get(neighboor.x, neighboor.y)
+				if value is self.FREE:
+					if(neighboor not in marked):
+						marked.append(neighboor)
 						q.put(neighboor)
-					elif value is self.UNKNOWN:
-						return pt #return the free point
+				elif value is self.UNKNOWN:
+					return pt #return the free point
 		
 		print "DONE!"
 		return Point2D()
@@ -138,7 +139,7 @@ class ExplorationMap(object):
 	def getClosestFrontier(self,initPoint):
 		print "bfs"
 		newInitPoint = self.findClosestUnknown(initPoint)
-		print dfs
+		print "dfs"
 		frontier = Frontier()
 		self.dfs(newInitPoint, frontier, [])
 		return frontier

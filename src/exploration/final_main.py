@@ -58,7 +58,7 @@ if __name__ == '__main__':
 	
 	while(not rospy.is_shutdown()):
 		print "started"
-		clearCostMap()
+		#clearCostMap()
 		print "cleared"
 		mmap = ExplorationMap(rosInput.getGlobalMap(), rosInput.getUpdateMap())    
 		print "received"
@@ -73,7 +73,10 @@ if __name__ == '__main__':
 		startPose = rosInput.getRobotPose()
 		startPoint = Point2D().fromPoseStamped(startPose, mmap.resolution, mmap.origin)
 		
-		goalPoint = mmap.findClosestUnknown(startPoint)
+		#goalPoint = mmap.findClosestUnknown(startPoint)
+		frontier = mmap.getClosestFrontier(startPoint)
+		goalPoint = frontier.getMiddlePoint()		
+		
 		goalPose = goalPoint.toPoseStamped(mmap.resolution, mmap.origin)
 
 		globalCentroidTopic.publish(goalPoint.toGridCell(mmap.resolution,mmap.origin))
@@ -81,29 +84,15 @@ if __name__ == '__main__':
 		#obstaclesTopic.publish(mmap.getGridCell(1))
 		#unknownTopic.publish(mmap.getGridCell(2))
 		#globalFrontierTopic.publish(mmap.getClosestFrontier(startPoint).toGridCell(mmap.resolution,mmap.origin))
+		globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
 		
 		path = requestPath(startPose, goalPose)
 		
 		if len(path)<=1: #no path
 			print "no paths"
+			clearCostMap()
 			continue
-			#clearCostMap()
 		
-		#globalFrontierTopic.publish(frontier.toGridCell(mmap.resolution,mmap.origin))
-		
-		goalPub.publish(goalPose)
-		rospy.sleep(1)
-		while rosInput.getStatus() is 1 and not rospy.is_shutdown():
-			print "status = 1"
-			#if(rosInput.newMap): break
-			rospy.sleep(1)
-		else:
-			print "status = " + repr(rosInput.getStatus())
-		continue
-		
-		#rotate a little bit
-		if(rosInput.status is 3):continue
-		else: break
 		
 		for pose in path:
 			goalPub.publish(pose)
@@ -111,8 +100,8 @@ if __name__ == '__main__':
 			
 			while rosInput.getStatus() is 1 and not rospy.is_shutdown():
 				print "status = 1"
-				if(rosInput.newMap): break
-				rospy.sleep(1)
+				#if(rosInput.newMap): break
+				#rospy.sleep(1)
 			else:
 				print "status = " + repr(rosInput.getStatus())
 				#rotate a little bit
