@@ -14,8 +14,10 @@ Direction = enum(WEST=0, NORTHWEST=1, NORTH=2, NORTHEAST=3, EAST=4, SOUTHEAST=5,
 #Direction = enum(NORTHWEST=0, NORTH=1, NORTHEAST=2, EAST=3, SOUTHEAST=4, SOUTH=5, SOUTHWEST=6, WEST=7, N_DIRECTIONS=8) #90degree turn (starting with NORTHWEST)
 
 #Helper class
-#It represents a 2D oriented Point, or pose
 class Pose2D(object):
+	"""
+	2D oriented Point with discrete orientation (based on Direction)
+	"""
 	
 	#constructor
 	def __init__(self, x = 0, y = 0, orientation = 0):
@@ -25,6 +27,7 @@ class Pose2D(object):
 
 	#distance
 	def dist(self, otherPose):
+		"""Calculates the distance to otherPose"""
 		return math.sqrt((self.x-otherPose.x)**2 + (self.y-otherPose.y)**2)
 		
 	#this - other (just count x and y dimensions)

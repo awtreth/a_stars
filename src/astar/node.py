@@ -1,15 +1,23 @@
 import tf, math
 
-from pose2d import *
 from geometry_msgs.msg import PoseStamped, Point, Quaternion
 
-# It represents a possible state of the robot
+#custom imports
+from pose2d import *
+
 class Node(object):
+	"""
+	It represents a possible state of the robot
+	"""
 	
-	# pos - OrientedPoint (x,y,dir)
-	# parent - reference to the node that it came from
-	# h_n - heuristic function
 	def __init__(self, pos, parent = 0 , g_n = 0, h_n = 0):
+		"""Default Constructor
+		pos -- OrientedPoint (x,y,dir)
+		parent -- reference to the node that it came from
+		g_n -- actual cost to reach it node
+		h_n -- heuristic from this node to the goal
+		"""
+		
 		if(parent): #if it doesn't have a parent (usually the startPoint)
 			self.pos = pos
 			self.parent = parent
@@ -26,31 +34,41 @@ class Node(object):
 		return self.g_n + self.h_n
 	
 	def turnLeft(self):
+		"""Returns the resulting node from a turnLeft action
+		The turn angle is based on the number of directions in Direction Enum
+		"""
 		pos = Pose2D(self.pos.x, self.pos.y, (self.pos.dir-1)%Direction.N_DIRECTIONS)
 		return Node(pos, self)
 		
 	def turnRight(self):
+		"""Returns the resulting node from a turn right action
+		The turn angle is based on the number of directions in Direction Enum
+		"""
 		pos = Pose2D(self.pos.x, self.pos.y, (self.pos.dir+1)%Direction.N_DIRECTIONS)
 		return Node(pos, self)
 		
 	def moveForward(self, nDirs = Direction.N_DIRECTIONS): #TODO: warning: this is valid just for 90degrees turn
+		"""Returns the resulting node from a move forward action
+		
+		nDirs -- number of directions
+		"""
 		if(nDirs is 4):
 			if(int(self.pos.dir%2) is 0): #even(west or east)
 				pos = Pose2D(self.pos.x+(self.pos.dir-1),self.pos.y, self.pos.dir)
 				return Node(pos,self)
-			else: #odd number
+			else: #odd number (north or south)
 				pos = Pose2D(self.pos.x,self.pos.y-(self.pos.dir-2), self.pos.dir)
 				return Node(pos,self)
 		elif(nDirs is 8):
 			pos = Pose2D(self.pos.x,self.pos.y, self.pos.dir)
 			
-			if pos.dir in (Direction.WEST,Direction.NORTHWEST,Direction.SOUTHWEST):
+			if pos.dir in (Direction.WEST,Direction.NORTHWEST,Direction.SOUTHWEST):#west
 				pos.x-=1
-			elif pos.dir in (Direction.EAST, Direction.NORTHEAST, Direction.SOUTHEAST):
+			elif pos.dir in (Direction.EAST, Direction.NORTHEAST, Direction.SOUTHEAST):#east
 				pos.x+=1
-			if pos.dir in (Direction.NORTHWEST, Direction.NORTH, Direction.NORTHEAST):
+			if pos.dir in (Direction.NORTHWEST, Direction.NORTH, Direction.NORTHEAST):#north
 				pos.y+=1
-			elif pos.dir in (Direction.SOUTHWEST, Direction.SOUTH, Direction.SOUTHEAST):
+			elif pos.dir in (Direction.SOUTHWEST, Direction.SOUTH, Direction.SOUTHEAST):#south
 				pos.y-=1
 			
 			return Node(pos,self)
@@ -59,6 +77,10 @@ class Node(object):
 			return self
 
 	def expandAll(self):
+		"""Returns a list of the reachable nodes from self
+		
+		reachable nodes: resulting nodes of moveForward, turnLeft and turnRight methods
+		"""
 		all_children = []
 		
 		all_children.append(self.moveForward())
@@ -67,8 +89,11 @@ class Node(object):
 		
 		return all_children
 
-	#Convert a node (in nCells and Direction) to a Pose(in meters and degrees)
 	def toPose(self, resolution, origin):
+		"""Convert a node (in nCells and Direction units) to a Pose(in meters and degrees)
+			resolution -- ros map resolution (in meters)
+			origin -- ros map origin (in meters)
+		"""
 		pose = PoseStamped()
 		pose.header.frame_id = "map"
 		point = Point()
