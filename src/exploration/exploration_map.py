@@ -40,8 +40,8 @@ class ExplorationMap(object):
 		for y in range(0,update.height):
 			for x in range(0,update.width):
 				if self.inBounds(x+update.x,y+update.y):
-					if update.data[y*update.width+x] >= 0:
-						self.mmap[(y+update.y)*self.width+(x+update.x)] = update.data[y*update.width+x]
+					#if update.data[y*update.width+x] >= 0:
+					self.mmap[(y+update.y)*self.width+(x+update.x)] = update.data[y*update.width+x]
 
 	#Get the state of the specified position
 	def get(self,x,y):
@@ -66,6 +66,19 @@ class ExplorationMap(object):
 	#actually it's not "get". It calculates
 	def getAllFrontiers(self):
 		bigFrontier = self.getGlobalFrontier()
+		
+		frontiers = []
+		
+		while len(bigFrontier.points) > 0 and not rospy.is_shutdown():
+			frontier = Frontier()
+			self.dfs(bigFrontier.get(0), frontier,[])
+			bigFrontier.removePoints(frontier.points)
+			frontiers.append(frontier.copy())
+		
+		return frontiers
+
+	def getAllFrontiersBFS(self, initPoint):
+		bigFrontier = self.findClosestUnknown(initPoint)
 		
 		frontiers = []
 		
@@ -118,17 +131,11 @@ class ExplorationMap(object):
 		
 		q = Queue.Queue()
 		q.put(initPoint)
-		frontiers = []
 		frontier = Frontier()
 		
 		while not q.empty() and not rospy.is_shutdown():
 			pt = q.get()
 			if self.hasSpecificNeighboor(pt.x,pt.y,self.UNKNOWN):
-				if frontier.size > 0:
-					if not frontier.getLast().isConnectedTo(pt):
-						frontiers.append(frontier.copy())
-						frontier = Frontier()
-				
 				frontier.addPoint(pt)
 
 			neighboors = self.getSpecificNeighboors(pt.x,pt.y,self.FREE)
@@ -136,8 +143,8 @@ class ExplorationMap(object):
 				self.set(neighboor.x, neighboor.y,self.FREE_MARKED)
 				q.put(neighboor)
 		
-		print "DONE!"
-		return frontiers
+		print "finished BFS!"
+		return frontier
 
 	#Try to find the first free point that has an unknown neighboor and then performs dfs to find connected frontier points
 	def getClosestFrontier(self,initPoint):

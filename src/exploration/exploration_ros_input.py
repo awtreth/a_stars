@@ -25,7 +25,7 @@ class ExplorationRosInput(object):
 		self.globalMap = rosmap
 	
 	def readGlobalCostMapUpdates(self, rosmap):
-		print "updated map"
+		#print "updated map"
 		self.updateMap = rosmap
 		self.hasUpdate = True
 	

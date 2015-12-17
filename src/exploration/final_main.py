@@ -100,7 +100,7 @@ if __name__ == '__main__':
 	rospy.sleep(1)
 
 	#rotate(1,15) #rotate for 10 seconds
-	rotate(-.8,30) #rotate for 10 seconds	
+	#rotate(-.8,30) #rotate for 10 seconds	
 
 	while(not rospy.is_shutdown()):
 		print "started"
@@ -109,24 +109,24 @@ if __name__ == '__main__':
 		mmap = ExplorationMap(rosInput.getGlobalMap(),rosInput.getUpdateMap())    
 		print "received"
 	
-		#freeTopic.publish(mmap.getGridCell(0))
-		obstaclesTopic.publish(mmap.getGridCell(1))
-		unknownTopic.publish(mmap.getGridCell(2))
 		
 		startPose = rosInput.getRobotPose()
 		startPoint = Point2D().fromPoseStamped(startPose, mmap.resolution, mmap.origin)
 		
 		frontiers = mmap.getAllFrontiers()
-		#frontiers = mmap.findClosestUnknown(startPoint)
+		#frontiers = mmap.getAllFrontiersBFS(startPoint)
 		frontierss = filterFrontiers(frontiers, startPoint)
 		#continue
+		obstaclesTopic.publish(mmap.getGridCell(1))
+		unknownTopic.publish(mmap.getGridCell(2))
+		freeTopic.publish(mmap.getGridCell(3))
 
 		frontier = Frontier()
 		for f in frontierss:
 			globalFrontierTopic.publish(f.toGridCell(mmap.resolution,mmap.origin))
 			print "request path"
-			path = requestPath(startPose, f.centroid().toPoseStamped(mmap.resolution,mmap.origin))
-			#path = requestPath(startPose, f.closestPointTo(f.centroid()).toPoseStamped(mmap.resolution,mmap.origin))
+			#path = requestPath(startPose, f.centroid().toPoseStamped(mmap.resolution,mmap.origin))
+			path = requestPath(startPose, f.closestPointTo(f.centroid()).toPoseStamped(mmap.resolution,mmap.origin))
 			print "got path"
 		
 			if len(path) >= 1: 
@@ -140,8 +140,8 @@ if __name__ == '__main__':
 
 		print "got the closest Frontier"
 		
-		goalPoint = frontier.centroid()
-		#goalPoint = frontier.closestPointTo(f.centroid())
+		#goalPoint = frontier.centroid()
+		goalPoint = frontier.closestPointTo(f.centroid())
 		goalPose = goalPoint.toPoseStamped(mmap.resolution, mmap.origin)
 
 		globalCentroidTopic.publish(goalPoint.toGridCell(mmap.resolution,mmap.origin))
