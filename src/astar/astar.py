@@ -16,6 +16,17 @@ from astar_map import *
 from node import *
 from astar_planner import *
 
+from std_srvs.srv import Empty
+
+def clearCostMap():
+	rospy.wait_for_service('/move_base/clear_costmaps')
+	clear = rospy.ServiceProxy('/move_base/clear_costmaps', Empty)
+	
+	try:
+		clear()
+	except rospy.ServiceException as exc:
+		print("Service did not process request: " + str(exc))
+
 #CostMap read callBack Function
 def readGlobalMap(msg):
 	global rosmap
@@ -24,13 +35,18 @@ def readGlobalMap(msg):
 
 def readUpdateMap(msg):
 	global updateMap
+	global hasUpdate
+	global rosmap
 	#~ print "got update"
-	updateMap = msg
+	if msg.width == rosmap.info.width:
+		updateMap = msg
+		hasUpdate = True
 	
 #Service callBack Function
 def planCallBack(msg):
 	global rosmap
 	global updateMap
+	global hasUpdate
 	#~ global frontierPub
 	#~ global exploredPub
 	#~ global freePub
@@ -38,6 +54,11 @@ def planCallBack(msg):
 	#~ global wayPointsPub
 	
 	print "received request"
+	hasUpdate = False
+	while hasUpdate is False and not rospy.is_shutdown():
+		clearCostMap()
+		rospy.sleep(1)
+	hasUpdate = False
 	
 	planner = AStarPlanner(AStarMap(rosmap,updateMap), msg.start, msg.goal)
 	

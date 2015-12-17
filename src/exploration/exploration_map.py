@@ -13,7 +13,7 @@ class ExplorationMap(object):
 	FREE_MARKED = 3
 	
 	#Default Constructor
-	def __init__(self, globalMap, updateMap, threshold = 90):
+	def __init__(self, globalMap, updateMap, threshold = 99):
 		
 		self.width = globalMap.info.width
 		self.height = globalMap.info.height
@@ -40,6 +40,7 @@ class ExplorationMap(object):
 		for y in range(0,update.height):
 			for x in range(0,update.width):
 				if self.inBounds(x+update.x,y+update.y):
+					#if update.data[y*update.width+x] >= 0:
 					self.mmap[(y+update.y)*self.width+(x+update.x)] = update.data[y*update.width+x]
 
 	#Get the state of the specified position
@@ -72,7 +73,20 @@ class ExplorationMap(object):
 			frontier = Frontier()
 			self.dfs(bigFrontier.get(0), frontier,[])
 			bigFrontier.removePoints(frontier.points)
-			frontiers.append(frontier)
+			frontiers.append(frontier.copy())
+		
+		return frontiers
+
+	def getAllFrontiersBFS(self, initPoint):
+		bigFrontier = self.findClosestUnknown(initPoint)
+		
+		frontiers = []
+		#marked = []
+		while len(bigFrontier.points) > 0 and not rospy.is_shutdown():
+			frontier = Frontier()
+			self.dfs(bigFrontier.get(0), frontier,[],self.FREE_MARKED)
+			bigFrontier.removePoints(frontier.points)
+			frontiers.append(frontier.copy())
 		
 		return frontiers
 
@@ -117,18 +131,20 @@ class ExplorationMap(object):
 		
 		q = Queue.Queue()
 		q.put(initPoint)
+		frontier = Frontier()
 		
 		while not q.empty() and not rospy.is_shutdown():
 			pt = q.get()
 			if self.hasSpecificNeighboor(pt.x,pt.y,self.UNKNOWN):
-				return pt
+				frontier.addPoint(pt)
+
 			neighboors = self.getSpecificNeighboors(pt.x,pt.y,self.FREE)
 			for neighboor in neighboors:
 				self.set(neighboor.x, neighboor.y,self.FREE_MARKED)
 				q.put(neighboor)
 		
-		print "DONE!"
-		return Point2D()
+		print "finished BFS!"
+		return frontier
 
 	#Try to find the first free point that has an unknown neighboor and then performs dfs to find connected frontier points
 	def getClosestFrontier(self,initPoint):
@@ -141,16 +157,16 @@ class ExplorationMap(object):
 	
 	#performs DepthFirstSearch to find frontier points
 	#assumes that the first point is a frontier point
-	def dfs(self, point, frontier, marked = []):
+	def dfs(self, point, frontier, marked = [], fromState = 0, targetState = 2):
 		
 		frontier.addPoint(point)
 		marked.append(point);
-		neighboors = self.getSpecificNeighboors(point.x, point.y, self.FREE)
+		neighboors = self.getSpecificNeighboors(point.x, point.y, fromState)
 		
 		for neighboor in neighboors:
 			if not neighboor.isInList(marked):
-				if self.hasSpecificNeighboor(neighboor.x, neighboor.y, self.UNKNOWN) == True:
-					self.dfs(neighboor, frontier, marked)
+				if self.hasSpecificNeighboor(neighboor.x, neighboor.y, targetState) == True:
+					self.dfs(neighboor, frontier, marked, fromState, targetState)
 				else: marked.append(neighboor)
 	
 	# Return the GridCells ROS msg of the cells with state "value"

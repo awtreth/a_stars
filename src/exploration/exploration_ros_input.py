@@ -3,6 +3,17 @@ from nav_msgs.msg import OccupancyGrid
 from actionlib_msgs.msg import GoalStatusArray 
 from geometry_msgs.msg import PoseStamped 
 from map_msgs.msg import OccupancyGridUpdate
+from std_srvs.srv import Empty
+
+def clearCostMap():
+	rospy.wait_for_service('/move_base/clear_costmaps')
+	clear = rospy.ServiceProxy('/move_base/clear_costmaps', Empty)
+	
+	try:
+		clear()
+	except rospy.ServiceException as exc:
+		print("Service did not process request: " + str(exc))
+
 
 class ExplorationRosInput(object):
 	
@@ -21,13 +32,15 @@ class ExplorationRosInput(object):
 		self.hasUpdate = False
 	
 	def readGlobalCostMap(self, rosmap):
-		print "got map"
+		print "got new map"
 		self.globalMap = rosmap
 	
 	def readGlobalCostMapUpdates(self, rosmap):
-		print "updated map"
-		self.updateMap = rosmap
-		self.hasUpdate = True
+		#print "updated map"
+		if rosmap.width == self.globalMap.info.width:
+			print "got update"			
+			self.updateMap = rosmap
+			self.hasUpdate = True
 	
 	def getMap(self):
 		self.newMap = False
@@ -35,11 +48,13 @@ class ExplorationRosInput(object):
 		#return self.globalmap
 	
 	def getUpdateMap(self):
-		if(self.hasUpdate is True):
-			return self.updateMap
-		else:
-			return 0
-	
+		self.hasUpdate = False
+		while self.hasUpdate is False and not rospy.is_shutdown():
+			clearCostMap()
+			rospy.sleep(1)
+		self.hasUpdate = False
+		return self.updateMap
+
 	def getGlobalMap(self):
 		return self.globalMap
 	

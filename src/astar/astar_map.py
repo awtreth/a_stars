@@ -15,7 +15,7 @@ CellState = enum(FREE=0, FRONTIER=1, EXPLORED=2, BLOCKED=3)
 #keep tracks of the state of each cell in the map
 class AStarMap(object):
 	
-	def __init__(self, ocmap, updateMap, threshold = 90): #ocmap = OccupancyGrid (costmap)
+	def __init__(self, ocmap, updateMap, threshold = 99): #ocmap = OccupancyGrid (costmap)
 		self.resolution = ocmap.info.resolution
 		self.width = ocmap.info.width #just to make it easier to see
 		self.height = ocmap.info.height
@@ -30,7 +30,7 @@ class AStarMap(object):
 		print "updated the map"
 		#create the state table
 		for i in range(len(self.states)):
-			if(self.costmap[i]>=self.threshold or self.costmap[i] is -1):
+			if(self.costmap[i]>=self.threshold or self.costmap[i] < 0):
 				self.states[i] = CellState.BLOCKED #set the obstacles
 			else:
 				self.states[i] = CellState.FREE #unknown places (-1) are also marked as FREE

@@ -21,6 +21,8 @@ class Frontier(object):
 		for pt in pts:
 			self.remove(pt)
 	
+	def copy(self):
+		return Frontier(self.points)
 	
 	def isConnectedTo(self, point):
 		for pt in self.points:
