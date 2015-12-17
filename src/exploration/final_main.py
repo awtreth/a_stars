@@ -13,6 +13,14 @@ from nav_msgs.srv import GetPlan
 from std_srvs.srv import Empty
 from Queue import PriorityQueue
 
+def clearCostMap():
+	rospy.wait_for_service('/move_base/clear_costmaps')
+	clear = rospy.ServiceProxy('/move_base/clear_costmaps', Empty)
+	
+	try:
+		clear()
+	except rospy.ServiceException as exc:
+		print("Service did not process request: " + str(exc))
 
 def requestPath(startPose, goalPose):
 	
@@ -100,11 +108,11 @@ if __name__ == '__main__':
 	rospy.sleep(1)
 
 	#rotate(1,15) #rotate for 10 seconds
-	#rotate(-.8,30) #rotate for 10 seconds	
+	rotate(-.8,45) #rotate for 10 seconds	
 
 	while(not rospy.is_shutdown()):
 		print "started"
-		clearCostMap()
+		#rotate(-.8,5)		
 		rosInput.hasUpdate = False
 		mmap = ExplorationMap(rosInput.getGlobalMap(),rosInput.getUpdateMap())    
 		print "received"
