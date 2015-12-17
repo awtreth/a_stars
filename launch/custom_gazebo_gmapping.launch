@@ -1,6 +1,6 @@
 <launch>
   <include file="$(find turtlebot_gazebo)/launch/turtlebot_world.launch">
-    <arg name="world_file"  value="/home/mamarantearaujo/a_stars/rviz/maze.world"/>
+    <arg name="world_file"  value="$(find a_stars)/rviz/simple.world"/>
   </include>
   
   <include file="$(find turtlebot_gazebo)/launch/gmapping_demo.launch"/>
@@ -8,5 +8,5 @@
   <!-- Move base -->
   <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
   
-  <node name="rviz" pkg="rviz" type="rviz" args="-d /home/mamarantearaujo/a_stars/rviz/exploration.rviz"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find a_stars)/rviz/exploration.rviz"/>
 </launch>
