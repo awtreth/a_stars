@@ -81,10 +81,10 @@ class ExplorationMap(object):
 		bigFrontier = self.findClosestUnknown(initPoint)
 		
 		frontiers = []
-		
+		#marked = []
 		while len(bigFrontier.points) > 0 and not rospy.is_shutdown():
 			frontier = Frontier()
-			self.dfs(bigFrontier.get(0), frontier,[])
+			self.dfs(bigFrontier.get(0), frontier,[],self.FREE_MARKED)
 			bigFrontier.removePoints(frontier.points)
 			frontiers.append(frontier.copy())
 		
@@ -157,16 +157,16 @@ class ExplorationMap(object):
 	
 	#performs DepthFirstSearch to find frontier points
 	#assumes that the first point is a frontier point
-	def dfs(self, point, frontier, marked = []):
+	def dfs(self, point, frontier, marked = [], fromState = 0, targetState = 2):
 		
 		frontier.addPoint(point)
 		marked.append(point);
-		neighboors = self.getSpecificNeighboors(point.x, point.y, self.FREE)
+		neighboors = self.getSpecificNeighboors(point.x, point.y, fromState)
 		
 		for neighboor in neighboors:
 			if not neighboor.isInList(marked):
-				if self.hasSpecificNeighboor(neighboor.x, neighboor.y, self.UNKNOWN) == True:
-					self.dfs(neighboor, frontier, marked)
+				if self.hasSpecificNeighboor(neighboor.x, neighboor.y, targetState) == True:
+					self.dfs(neighboor, frontier, marked, fromState, targetState)
 				else: marked.append(neighboor)
 	
 	# Return the GridCells ROS msg of the cells with state "value"

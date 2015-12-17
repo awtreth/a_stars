@@ -113,8 +113,8 @@ if __name__ == '__main__':
 		startPose = rosInput.getRobotPose()
 		startPoint = Point2D().fromPoseStamped(startPose, mmap.resolution, mmap.origin)
 		
-		frontiers = mmap.getAllFrontiers()
-		#frontiers = mmap.getAllFrontiersBFS(startPoint)
+		#frontiers = mmap.getAllFrontiers()
+		frontiers = mmap.getAllFrontiersBFS(startPoint)
 		frontierss = filterFrontiers(frontiers, startPoint)
 		#continue
 		obstaclesTopic.publish(mmap.getGridCell(1))
